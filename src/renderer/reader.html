@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reader – Space</title>
+  <style>
+    :root {
+      --bg:            #0f0f13;
+      --surface:       #16161e;
+      --border:        rgba(255,255,255,0.07);
+      --text-primary:  #e2e2ec;
+      --text-secondary:#8888aa;
+      --text-body:     #cccce0;
+      --accent:        #2563eb;
+      --accent-light:  #60a5fa;
+      --accent-glow:   rgba(37,99,235,0.15);
+      --link:          #60a5fa;
+      --reading-bg:    #111118;
+      --reading-max:   680px;
+      --font-serif:    'Georgia', 'Times New Roman', serif;
+      --font-sans:     -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-size:     18px;
+      --line-height:   1.8;
+    }
+
+    /* Theme variants */
+    body.theme-sepia {
+      --reading-bg:  #1a1408;
+      --bg:          #130f06;
+      --surface:     #1c160a;
+      --text-primary: #e8d5b0;
+      --text-body:   #d4bc94;
+      --text-secondary: #8a7050;
+    }
+    body.theme-light {
+      --reading-bg:  #f8f8f5;
+      --bg:          #efefec;
+      --surface:     #e8e8e4;
+      --border:      rgba(0,0,0,0.1);
+      --text-primary: #1a1a2e;
+      --text-body:   #2a2a40;
+      --text-secondary: #666680;
+      --link: #1d4ed8;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      user-select: text;   /* allow text selection in reader mode */
+      -webkit-app-region: no-drag;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+
+    .toolbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent-light);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+    }
+
+    .toolbar-title {
+      flex: 1;
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toolbar-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.13s, border-color 0.13s, color 0.13s;
+      flex-shrink: 0;
+    }
+    .toolbar-btn:hover {
+      background: rgba(37,99,235,0.1);
+      border-color: rgba(37,99,235,0.35);
+      color: var(--text-primary);
+    }
+
+    /* Font size control */
+    .font-control {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .font-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.13s, color 0.13s;
+    }
+    .font-btn:hover { background: rgba(37,99,235,0.12); color: var(--text-primary); }
+
+    /* Theme switcher */
+    .theme-switcher {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .theme-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.13s, transform 0.1s;
+    }
+    .theme-dot:hover { transform: scale(1.15); }
+    .theme-dot.active { border-color: var(--accent-light); }
+    .theme-dark  { background: #16161e; }
+    .theme-sepia { background: #3a2e10; }
+    .theme-light { background: #f0efe9; border: 1px solid rgba(0,0,0,0.15); }
+
+    /* ── Article ── */
+    .reader-outer {
+      max-width: var(--reading-max);
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    .article-meta {
+      margin-bottom: 32px;
+    }
+
+    .article-source {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      margin-bottom: 12px;
+      padding: 4px 10px;
+      background: rgba(37,99,235,0.07);
+      border: 1px solid rgba(37,99,235,0.18);
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .article-source:hover { background: rgba(37,99,235,0.14); }
+
+    h1.article-title {
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+    }
+
+    .article-byline {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+
+    hr.article-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    /* ── Article content ── */
+    .article-body {
+      font-family: var(--font-serif);
+      font-size: var(--font-size);
+      line-height: var(--line-height);
+      color: var(--text-body);
+    }
+
+    .article-body h1,
+    .article-body h2,
+    .article-body h3,
+    .article-body h4 {
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      margin: 2em 0 0.6em;
+      line-height: 1.3;
+    }
+    .article-body h2 { font-size: 1.35em; }
+    .article-body h3 { font-size: 1.1em; }
+
+    .article-body p { margin-bottom: 1.2em; }
+
+    .article-body a {
+      color: var(--link);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    .article-body a:hover { opacity: 0.8; }
+
+    .article-body blockquote {
+      border-left: 3px solid var(--accent);
+      margin: 1.5em 0;
+      padding: 0.5em 0 0.5em 1.2em;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .article-body code {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 0.85em;
+      color: var(--accent-light);
+    }
+
+    .article-body pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 1.4em 0;
+    }
+    .article-body pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 0.85em;
+    }
+
+    .article-body img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 1.5em 0;
+      display: block;
+    }
+
+    .article-body ul,
+    .article-body ol {
+      padding-left: 1.8em;
+      margin-bottom: 1.2em;
+    }
+    .article-body li { margin-bottom: 0.4em; }
+
+    /* ── Loading / empty state ── */
+    .reader-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 80px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid rgba(37,99,235,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="toolbar-logo">
+    <svg width="16" height="16" viewBox="0 0 56 56" fill="none">
+      <circle cx="28" cy="28" r="28" fill="#0f1a2e"/>
+      <circle cx="28" cy="28" r="9" fill="none" stroke="#60a5fa" stroke-width="2" opacity="0.7"/>
+      <circle cx="28" cy="28" r="3.5" fill="#2563eb"/>
+      <ellipse cx="28" cy="28" rx="21" ry="7.5" fill="none" stroke="#2563eb" stroke-width="1.5" opacity="0.5" transform="rotate(-30 28 28)"/>
+    </svg>
+    Reader
+  </div>
+
+  <span class="toolbar-title" id="toolbarTitle">Loading article…</span>
+
+  <div class="font-control" title="Adjust font size">
+    <button class="font-btn" onclick="changeFontSize(-1)" title="Decrease font size">−</button>
+    <button class="font-btn" onclick="changeFontSize(1)"  title="Increase font size">+</button>
+  </div>
+
+  <div class="theme-switcher" title="Switch theme">
+    <div class="theme-dot theme-dark  active" data-theme="dark"  onclick="setTheme('dark')"  title="Dark"></div>
+    <div class="theme-dot theme-sepia"        data-theme="sepia" onclick="setTheme('sepia')" title="Sepia"></div>
+    <div class="theme-dot theme-light"        data-theme="light" onclick="setTheme('light')" title="Light"></div>
+  </div>
+
+  <button class="toolbar-btn" onclick="goBack()" title="Back to original page">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+      <polyline points="8,1 3,6 8,11"/>
+    </svg>
+    Back
+  </button>
+
+  <button class="toolbar-btn" onclick="openOriginal()" title="Open original page">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M5 2H2v9h8V8m0-6H6m4 0v4"/>
+    </svg>
+    Original
+  </button>
+</div>
+
+<!-- Reader content -->
+<div class="reader-outer">
+  <div id="readerState" class="reader-state">
+    <div class="spinner"></div>
+    <span>Fetching article content…</span>
+  </div>
+  <div id="readerContent" style="display:none;">
+    <div class="article-meta">
+      <a class="article-source" id="articleSource" onclick="openOriginal()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3">
+          <path d="M5 2H2v9h8V8m0-6H6m4 0v4"/>
+        </svg>
+        <span id="articleHost"></span>
+      </a>
+      <h1 class="article-title" id="articleTitle"></h1>
+      <p class="article-byline" id="articleByline"></p>
+    </div>
+    <hr class="article-divider">
+    <div class="article-body" id="articleBody"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const api = window.spaceAPI ?? null;
+
+// ── URL parsing ────────────────────────────────────────────────────────────
+function getOriginalUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('url') ?? '';
+}
+
+// ── Theme / font controls ──────────────────────────────────────────────────
+let fontSizeBase = 18;
+
+function changeFontSize(delta) {
+  fontSizeBase = Math.max(14, Math.min(28, fontSizeBase + delta));
+  document.documentElement.style.setProperty('--font-size', fontSizeBase + 'px');
+  localStorage.setItem('reader-font-size', fontSizeBase);
+}
+
+function setTheme(name) {
+  document.body.className = name === 'dark' ? '' : `theme-${name}`;
+  document.querySelectorAll('.theme-dot').forEach(d => {
+    d.classList.toggle('active', d.dataset.theme === name);
+  });
+  localStorage.setItem('reader-theme', name);
+}
+
+// Restore preferences
+(function restorePrefs() {
+  const savedFont = parseInt(localStorage.getItem('reader-font-size') ?? '18');
+  const savedTheme = localStorage.getItem('reader-theme') ?? 'dark';
+  fontSizeBase = isNaN(savedFont) ? 18 : savedFont;
+  document.documentElement.style.setProperty('--font-size', fontSizeBase + 'px');
+  setTheme(savedTheme);
+})();
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+async function navigate(url) {
+  try {
+    const tabs = await api?.tabs.list();
+    const active = tabs?.find(t => t.isActive);
+    if (active) { api.tabs.navigate(active.id, url); return; }
+  } catch (_) {}
+  window.location.href = url;
+}
+
+function goBack() {
+  const orig = getOriginalUrl();
+  if (orig) navigate(orig);
+  else history.back();
+}
+
+function openOriginal() {
+  const orig = getOriginalUrl();
+  if (orig) navigate(orig);
+}
+
+// ── Content extraction ─────────────────────────────────────────────────────
+async function loadContent() {
+  const origUrl = getOriginalUrl();
+
+  if (!origUrl) {
+    showError('No URL provided. Open a page first, then click the Reader Mode button.');
+    return;
+  }
+
+  // Try to get the content from the current tab via IPC
+  let content = null;
+  try {
+    if (api?.tabs) {
+      const tabs = await api.tabs.list();
+      // Find the tab that was active *before* reader mode was activated —
+      // the reader page itself is now the active tab so look for any tab
+      // whose URL matches the original URL
+      const sourceTab = tabs.find(t => t.url === origUrl);
+      if (sourceTab && api.tabs.getPageContent) {
+        content = await api.tabs.getPageContent(sourceTab.id);
+      }
+    }
+  } catch (_) {}
+
+  // Fallback: fetch the page ourselves and parse it
+  if (!content) {
+    try {
+      const resp = await fetch(origUrl, {
+        headers: { 'Accept': 'text/html', 'Accept-Language': 'en-US,en;q=0.9' },
+      });
+      const html = await resp.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // Remove junk
+      doc.querySelectorAll('script,style,nav,header,footer,aside,.ads,.ad,iframe').forEach(n=>n.remove());
+      const article = doc.querySelector('article, main, [role="main"], .article, .post, .entry');
+      const container = article || doc.body;
+      content = {
+        title: doc.title,
+        bodyHtml: container.innerHTML,
+        text: container.textContent?.trim() ?? '',
+      };
+    } catch (err) {
+      showError('Unable to fetch article content. The page may require JavaScript or block direct access.\n\n' + err.message);
+      return;
+    }
+  }
+
+  if (!content || !content.bodyHtml) {
+    showError('No readable content found on this page.');
+    return;
+  }
+
+  renderArticle(origUrl, content);
+}
+
+function renderArticle(origUrl, content) {
+  let host = '';
+  try { host = new URL(origUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+
+  document.getElementById('toolbarTitle').textContent = content.title || host;
+  document.getElementById('articleHost').textContent  = host;
+  document.getElementById('articleTitle').textContent = content.title || 'Untitled';
+  document.getElementById('articleByline').textContent = origUrl;
+
+  // Sanitise the HTML: strip dangerous tags/attrs, keep content structure
+  const body = document.getElementById('articleBody');
+  body.innerHTML = sanitizeHtml(content.bodyHtml);
+
+  // Make all links open via navigate()
+  body.querySelectorAll('a[href]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const href = a.getAttribute('href');
+      if (href) {
+        try {
+          const abs = new URL(href, origUrl).href;
+          navigate(abs);
+        } catch (_) { navigate(href); }
+      }
+    });
+  });
+
+  // Show content, hide spinner
+  document.getElementById('readerState').style.display  = 'none';
+  document.getElementById('readerContent').style.display = 'block';
+}
+
+function sanitizeHtml(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  // Strip scripts, event handlers, iframes
+  div.querySelectorAll('script,iframe,object,embed,form,input,button,select').forEach(n=>n.remove());
+  div.querySelectorAll('*').forEach(el => {
+    // Remove event attributes
+    [...el.attributes].forEach(attr => {
+      if (attr.name.startsWith('on') || attr.name === 'style') {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return div.innerHTML;
+}
+
+function showError(msg) {
+  const state = document.getElementById('readerState');
+  state.innerHTML = `
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="18" stroke="rgba(248,113,113,0.4)" stroke-width="1.5"/>
+      <line x1="20" y1="12" x2="20" y2="22" stroke="#f87171" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="20" cy="28" r="1.5" fill="#f87171"/>
+    </svg>
+    <span style="color:#f87171;font-weight:600;">Could not load article</span>
+    <span style="max-width:400px;font-size:12px;white-space:pre-wrap;">${escHtml(msg)}</span>
+  `;
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', loadContent);
+</script>
+</body>
+</html>

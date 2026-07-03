@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    CSP is enforced at the Electron session level (see main.ts) in production.
+    A meta CSP here would block webpack-injected scripts in dev mode and cause
+    a completely blank/black renderer window. Do NOT add a script-src meta tag.
+  -->
+  <title>Space</title>
+  <style>
+    /* Shown only if JS fails to execute and React never mounts.
+       React mounts into #root and removes this fallback immediately. */
+    #js-fallback {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #0d0d0f;
+      color: #e8e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      gap: 12px;
+      padding: 32px;
+      text-align: center;
+    }
+    #js-fallback h2 { color: #f87171; font-size: 16px; margin: 0; }
+    #js-fallback p  { color: #9898b8; font-size: 13px; margin: 0; max-width: 480px; }
+    #js-fallback button {
+      margin-top: 8px;
+      background: #6366f1; border: none; border-radius: 8px;
+      color: #fff; padding: 8px 20px; cursor: pointer; font-size: 13px;
+    }
+    /* Hide fallback once React mounts */
+    #root:not(:empty) ~ #js-fallback,
+    #root:not(:empty) + #js-fallback { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div id="js-fallback">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <circle cx="12" cy="16" r="0.5" fill="#f87171"/>
+    </svg>
+    <h2>Space failed to start</h2>
+    <p>The renderer bundle could not be loaded. Open DevTools (Ctrl+Shift+I) for details, or reload the window.</p>
+    <button onclick="window.location.reload()">Reload</button>
+  </div>
+  <!-- NOTE: HtmlWebpackPlugin injects the bundle script automatically; do NOT add it manually here -->
+</body>
+</html>

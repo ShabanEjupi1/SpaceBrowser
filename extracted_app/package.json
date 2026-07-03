@@ -1,0 +1,22 @@
+{
+  "name": "space-browser",
+  "version": "1.0.0",
+  "description": "Space – A next-generation browser with built-in local AI inference. No cloud. No Ollama. Pure GGUF.",
+  "productName": "Space",
+  "main": "dist/main/main.js",
+  "author": "Space Browser Team",
+  "license": "MPL-2.0",
+  "dependencies": {
+    "@mapbox/node-pre-gyp": "^1.0.11",
+    "electron-store": "^8.1.0",
+    "node-addon-api": "^7.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "binary": {
+    "module_name": "space_inference",
+    "module_path": "./native/build/Release/",
+    "host": "https://github.com/space-browser/space/releases/download/",
+    "remote_path": "{version}"
+  }
+}

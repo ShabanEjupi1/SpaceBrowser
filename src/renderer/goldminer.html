@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Gold Miner – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:#1a0d00; display:flex; flex-direction:column; align-items:center;
+      min-height:100vh; font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    .header {
+      width:100%; display:flex; align-items:center; gap:10px;
+      padding:8px 16px; background:rgba(15,8,0,0.97);
+      border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0; z-index:10; flex-wrap:wrap;
+    }
+    .back-btn {
+      background:#2a1a00; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:5px 12px;
+      cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:5px;
+    }
+    .back-btn:hover { color:#e8e8f0; border-color:rgba(251,191,36,0.5); }
+    .info-row { margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px; flex-wrap:wrap; }
+    .badge {
+      background:#2a1a00; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; padding:4px 12px; font-weight:700; white-space:nowrap;
+    }
+    .badge.gold { border-color:rgba(251,191,36,0.5); color:#fbbf24; }
+    .badge.blue { border-color:rgba(59,130,246,0.5); color:#60a5fa; }
+    .badge.red  { border-color:rgba(239,68,68,0.5); color:#fca5a5; }
+    canvas { display:block; cursor:default; }
+
+    /* Overlays */
+    .overlay {
+      position:fixed; inset:0; top:44px; background:rgba(10,5,0,0.94);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:14px; z-index:20; backdrop-filter:blur(4px);
+    }
+    .overlay h2 { font-size:30px; font-weight:800; color:#fbbf24; text-shadow:0 0 30px rgba(251,191,36,0.5); }
+    .overlay .sub { font-size:13px; color:#92400e; text-align:center; line-height:1.8; max-width:420px; }
+    .overlay .final { font-size:18px; font-weight:700; color:#f59e0b; }
+    .overlay .goal-info { font-size:14px; color:#fde68a; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.25); border-radius:10px; padding:10px 22px; text-align:center; }
+    .overlay .btn-row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+    .ov-btn {
+      background:linear-gradient(135deg,#b45309,#d97706); border:none; border-radius:10px;
+      color:#fff; font-size:14px; font-weight:700; padding:11px 28px;
+      cursor:pointer; transition:opacity 0.15s; box-shadow:0 4px 24px rgba(180,83,9,0.5);
+    }
+    .ov-btn:hover { opacity:0.85; }
+    .ov-btn.secondary { background:linear-gradient(135deg,#1e3a5f,#2563eb); }
+    .ov-btn.green { background:linear-gradient(135deg,#166534,#16a34a); }
+    .progress-bar-wrap { width:min(500px,88vw); height:8px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,0.06); }
+    .progress-fill { height:100%; background:linear-gradient(90deg,#d97706,#fbbf24); border-radius:4px; transition:width 0.3s ease; }
+
+    /* Market modal */
+    #marketModal {
+      position:fixed; inset:0; background:rgba(0,0,0,0.82);
+      display:none; flex-direction:column; align-items:center; justify-content:center;
+      gap:12px; z-index:40; backdrop-filter:blur(6px);
+    }
+    #marketModal.open { display:flex; }
+    .market-box {
+      background:#1a0a00; border:1px solid rgba(251,191,36,0.3); border-radius:16px;
+      padding:20px 28px; width:min(480px,94vw); max-height:80vh; overflow-y:auto;
+    }
+    .market-box h3 { font-size:18px; color:#fbbf24; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .market-item {
+      display:flex; align-items:center; gap:12px; padding:10px 0;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    .market-item:last-child { border-bottom:none; }
+    .market-item .icon { font-size:24px; width:36px; text-align:center; }
+    .market-item .info { flex:1; }
+    .market-item .name { font-size:13px; font-weight:700; color:#fde68a; }
+    .market-item .desc { font-size:11px; color:#92400e; margin-top:2px; }
+    .market-item .price { font-size:13px; color:#fbbf24; font-weight:700; white-space:nowrap; margin-right:8px; }
+    .buy-btn {
+      background:#d97706; border:none; border-radius:7px;
+      color:#fff; font-size:12px; font-weight:700; padding:6px 14px; cursor:pointer;
+      transition:opacity 0.15s;
+    }
+    .buy-btn:hover { opacity:0.8; }
+    .buy-btn:disabled { background:#4a3800; color:#92400e; cursor:not-allowed; opacity:0.6; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:14px;font-weight:700;">⛏️ Gold Miner</span>
+  <div class="info-row">
+    <div class="badge gold" id="p1ScoreBadge">P1 💰$0</div>
+    <div class="badge blue" id="p2ScoreBadge" style="display:none;">P2 💰$0</div>
+    <div class="badge" id="goalBadge">Goal: $800</div>
+    <div class="badge" id="levelBadge">Lv 1/20</div>
+    <div class="badge" id="timeBadge">⏱ 60s</div>
+    <div class="badge" id="dynBadge">💣 ×0</div>
+    <div class="badge" id="turnBadge" style="display:none;">P1's Turn</div>
+    <button class="ov-btn" style="padding:4px 10px;font-size:11px;box-shadow:none;" onclick="openMarket()">🏪 Market</button>
+  </div>
+</div>
+<canvas id="c"></canvas>
+
+<!-- Mode selection overlay -->
+<div class="overlay" id="menuOverlay">
+  <h2>⛏️ Gold Miner</h2>
+  <div class="sub">Swing your claw to grab gold, bags & diamonds!<br>Use <strong>↓ arrow / Space / Click</strong> to launch.</div>
+  <div class="goal-info" id="goalDisplay">Level 1 — Collect $800 to advance! (20 levels total)</div>
+  <div class="btn-row">
+    <button class="ov-btn" onclick="startGame(1)">⛏️ 1 Player</button>
+    <button class="ov-btn secondary" onclick="startGame(2)">👥 2 Players</button>
+    <button class="ov-btn green" onclick="startGame('ai')">🤖 vs AI</button>
+  </div>
+</div>
+
+<!-- Level up / game over overlay -->
+<div class="overlay" id="overlay" style="display:none;">
+  <h2 id="ovTitle">Level Complete!</h2>
+  <div class="sub" id="ovSub"></div>
+  <div class="final" id="ovFinal"></div>
+  <div class="goal-info" id="ovGoal" style="display:none;"></div>
+  <div class="btn-row" id="ovBtns"></div>
+</div>
+
+<!-- Market modal -->
+<div id="marketModal">
+  <div class="market-box">
+    <h3>🏪 Market <span style="font-size:12px;color:#92400e;margin-left:auto;" id="marketGold"></span></h3>
+    <div id="marketItems"></div>
+    <div style="text-align:center;margin-top:14px;">
+      <button class="ov-btn" style="padding:8px 24px;" onclick="closeMarket()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const canvas  = document.getElementById('c');
+const ctx     = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+
+function resize() { canvas.width=window.innerWidth; canvas.height=window.innerHeight-44; }
+resize(); window.addEventListener('resize', resize);
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const MINER_Y    = 80;
+const GROUND_START=160;
+const CLAW_LEN_MIN=40;
+const CLAW_SPEED =2.8;
+const ROPE_SPEED =7;
+const RETRACT_MULT = { gold_small:0.65, gold_medium:0.4, gold_large:0.22, bag:0.8, diamond:0.5, rock:0.18, dynamite:0.9, mystery:0.6 };
+const MAX_LEVEL = 20;
+
+// Goals grow progressively
+const GOALS = [0];
+for (let i=1;i<=20;i++) GOALS.push(Math.round(800*Math.pow(1.42,i-1)/100)*100);
+
+const TIME_PER_LEVEL = [0,60,62,65,65,70,68,65,62,58,55,52,50,48,50,52,55,50,48,45,42];
+const VALUE_MULT = [0];
+for (let i=1;i<=20;i++) VALUE_MULT.push(+(1.0+i*0.18).toFixed(2));
+// Item weights per level band
+function getWeights(lv) {
+  const t=lv/20;
+  return [
+    Math.max(0.04,0.22-t*0.18), // gold_small
+    Math.max(0.06,0.18-t*0.06), // gold_medium
+    Math.min(0.22,0.06+t*0.18), // gold_large
+    Math.max(0.06,0.14-t*0.04), // bag
+    Math.min(0.18,0.04+t*0.15), // diamond
+    Math.max(0.10,0.28-t*0.12), // rock
+    Math.min(0.15,0.08+t*0.08), // dynamite
+    Math.min(0.08,t*0.10),      // mystery
+  ];
+}
+const ITEM_TYPES = {
+  gold_small:  {value:100,weight:1.0,radius:14,color:'#fbbf24',label:'$100'},
+  gold_medium: {value:250,weight:2.5,radius:22,color:'#f59e0b',label:'$250'},
+  gold_large:  {value:600,weight:5.5,radius:34,color:'#d97706',label:'$600'},
+  bag:         {value:350,weight:1.8,radius:18,color:'#78350f',label:'$350'},
+  diamond:     {value:800,weight:1.2,radius:16,color:'#67e8f9',label:'$800'},
+  rock:        {value:15, weight:8.0,radius:28,color:'#6b7280',label:'$15'},
+  dynamite:    {value:0,  weight:0.8,radius:14,color:'#ef4444',label:'💣'},
+  mystery:     {value:0,  weight:1.0,radius:18,color:'#a78bfa',label:'?'},
+};
+const ITEMS_PER_LEVEL=[0,12,14,16,18,20,22,24,26,28,30,30,32,32,34,34,36,36,38,40,42];
+
+// ── Market items ──────────────────────────────────────────────────────────────
+const MARKET_ITEMS = [
+  {id:'extra_time',name:'⏱ Extra Time',desc:'Add 20 seconds to the clock',price:500,icon:'⏱',onBuy:()=>{timeLeft+=20;},repeatable:true},
+  {id:'speed_rope', name:'⚡ Fast Rope',  desc:'Faster rope retraction for 1 level',price:800,icon:'⚡',onBuy:()=>{speedBoost=true;},repeatable:true},
+  {id:'magnet',name:'🧲 Magnet',desc:'Auto-attract nearby gold for 15 seconds',price:1200,icon:'🧲',onBuy:()=>{magnetTime=15;},repeatable:true},
+  {id:'score_boost',name:'💎 Score Boost',desc:'2× score multiplier for next 10 grabs',price:1500,icon:'💎',onBuy:()=>{scoreBoostCount+=10;},repeatable:true},
+  {id:'extra_dyn',name:'💣 Dynamite ×3',desc:'Add 3 dynamite charges',price:400,icon:'💣',onBuy:()=>{dynamites[currentPlayer]+=3;},repeatable:true},
+];
+let marketGold = 0; // shared wallet for buying
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let gameState='idle', gameMode=1;
+let level, timeLeft;
+let dynamites={};
+let items, particles, floatingTexts;
+let timerHandle=null, rafId=0;
+let speedBoost=false, magnetTime=0, scoreBoostCount=0;
+
+// Multi-player state
+let numPlayers=1, currentPlayer=1, scores={}, playerScores={};
+let aiActive=false;
+let aiThinkTimer=null;
+
+// Claw state per player
+let claws={};
+
+function initClaw(p) {
+  claws[p]={ angle:0,dir:1,len:CLAW_LEN_MIN,state:'swinging',hookedItem:null,x:0,y:0 };
+}
+
+function pivotX(p) {
+  if (numPlayers===1||gameMode==='ai') return canvas.width/2;
+  return p===1 ? canvas.width*0.25 : canvas.width*0.75;
+}
+const PIVOT_Y = MINER_Y;
+
+// ── Item placement ────────────────────────────────────────────────────────────
+function generateItems(lv) {
+  const count=ITEMS_PER_LEVEL[lv]||14, CW=canvas.width, CH=canvas.height;
+  const placed=[], typeKeys=Object.keys(ITEM_TYPES);
+  const weights=getWeights(lv);
+  for (let i=0;i<count;i++) {
+    const rnd=Math.random(); let acc=0,typeName='rock';
+    for (let k=0;k<typeKeys.length;k++) { acc+=weights[k]; if(rnd<acc){typeName=typeKeys[k];break;} }
+    const def=ITEM_TYPES[typeName];
+    let x,y,tries=0;
+    do {
+      x=def.radius+40+Math.random()*(CW-def.radius*2-80);
+      y=GROUND_START+def.radius+Math.random()*(CH-GROUND_START-def.radius*2-30);
+      tries++;
+    } while(tries<40&&placed.some(p2=>Math.hypot(p2.x-x,p2.y-y)<p2.radius+def.radius+10));
+    placed.push({type:typeName,x,y,radius:def.radius,grabbed:false,exploded:false,shakeT:0});
+  }
+  return placed;
+}
+
+function initLevel() {
+  items=generateItems(level); particles=[]; floatingTexts=[];
+  for(let p=1;p<=numPlayers;p++) initClaw(p);
+  if(gameMode==='ai') initClaw(2);
+  speedBoost=false; magnetTime=0;
+  updateHUD();
+}
+
+function startGame(mode) {
+  // Always kill existing timer and RAF before resetting any state
+  clearInterval(timerHandle); timerHandle = null;
+  cancelAnimationFrame(rafId);  rafId = 0;
+
+  gameMode=mode; numPlayers=mode==='ai'?1:mode;
+  aiActive=(mode==='ai');
+  document.getElementById('menuOverlay').style.display='none';
+  overlay.style.display='none';
+
+  // Reset player state
+  currentPlayer=1;
+  if(numPlayers===2||aiActive) {
+    scores={1:0,2:0}; dynamites={1:0,2:0};
+    playerScores={1:0,2:0};
+    document.getElementById('p2ScoreBadge').style.display='flex';
+    document.getElementById('turnBadge').style.display='flex';
+  } else {
+    scores={1:0}; dynamites={1:0};
+    playerScores={1:0};
+    document.getElementById('p2ScoreBadge').style.display='none';
+    document.getElementById('turnBadge').style.display='none';
+  }
+  level=1; timeLeft=TIME_PER_LEVEL[1]; marketGold=200;
+  gameState='playing';
+  initLevel();
+  startTimer();
+  rafId=requestAnimationFrame(loop);
+}
+
+// addScore – add value to current player's total; returns actual amount added
+function addScore(val){
+  const mult=VALUE_MULT[level]||1.0;
+  let v=Math.round(val*mult);
+  if(scoreBoostCount>0){v*=2;scoreBoostCount--;}
+  scores[currentPlayer]=(scores[currentPlayer]||0)+v;
+  playerScores[currentPlayer]=(playerScores[currentPlayer]||0)+v;
+  marketGold+=Math.round(v*0.15);
+  updateHUD();
+  return v;
+}
+
+function startTimer() {
+  clearInterval(timerHandle);
+  timerHandle=setInterval(()=>{
+    if(gameState!=='playing') return;
+    timeLeft--; document.getElementById('timeBadge').textContent='⏱ '+timeLeft+'s';
+    if(timeLeft<=0) endLevel();
+  },1000);
+}
+
+function endLevel() {
+  clearInterval(timerHandle);
+  const totalScore=Object.values(scores).reduce((a,b)=>a+b,0);
+  const goal=GOALS[level]||800;
+  if(totalScore>=goal) {
+    if(level>=MAX_LEVEL){ gameOver(true); } else { level++; timeLeft=TIME_PER_LEVEL[Math.min(level,20)]; showLevelBanner(); }
+  } else { gameOver(false); }
+}
+
+function showLevelBanner() {
+  gameState='levelup'; cancelAnimationFrame(rafId);
+  const nextGoal=GOALS[level];
+  const mult=VALUE_MULT[level]||1.0;
+  const totalScore=Object.values(scores).reduce((a,b)=>a+b,0);
+  document.getElementById('ovTitle').textContent='⭐ Level '+(level-1)+' Complete!';
+  document.getElementById('ovSub').textContent='Collected $'+totalScore+' — goal was $'+GOALS[level-1]+'!';
+  document.getElementById('ovFinal').textContent='';
+  const og=document.getElementById('ovGoal'); og.style.display='block';
+  og.innerHTML='Level '+level+'/'+MAX_LEVEL+' — Collect $'+nextGoal+' to advance! <span style="color:#67e8f9">'+mult.toFixed(1)+'× value!</span>';
+  const ob=document.getElementById('ovBtns');
+  ob.innerHTML='<button class="ov-btn" onclick="continueLevel()">Next Level ▶</button>'
+    +'<button class="ov-btn secondary" onclick="openMarket()">🏪 Market</button>';
+  overlay.style.display='flex';
+}
+
+function continueLevel() {
+  clearInterval(timerHandle); timerHandle = null;
+  cancelAnimationFrame(rafId); rafId = 0;
+  overlay.style.display='none';
+  gameState='playing';
+  initLevel();
+  startTimer();
+  rafId=requestAnimationFrame(loop);
+}
+
+function gameOver(won) {
+  gameState='gameover'; cancelAnimationFrame(rafId);
+  const totalScore=Object.values(scores).reduce((a,b)=>a+b,0);
+  const stars=won?'🏆':(level>=15?'🥈':level>=10?'🥉':'💸');
+  let winnerText='';
+  if(numPlayers===2||aiActive) {
+    const w=scores[1]>=scores[2]?'Player 1':(aiActive?'AI':'Player 2');
+    winnerText='<br>Winner: <strong style="color:#fbbf24;">'+w+'</strong>';
+  }
+  document.getElementById('ovTitle').textContent=won?'🏆 You Win!':stars+' Time\'s Up!';
+  document.getElementById('ovSub').innerHTML=(won?'Legendary haul! All 20 levels conquered!':'Level '+level+': needed $'+GOALS[level]+' but collected $'+totalScore+'.')+winnerText;
+  document.getElementById('ovFinal').textContent='Final Score: $'+totalScore+' · Level '+level+'/'+MAX_LEVEL;
+  document.getElementById('ovGoal').style.display='none';
+  document.getElementById('ovBtns').innerHTML='<button class="ov-btn" onclick="document.getElementById(\'menuOverlay\').style.display=\'flex\';overlay.style.display=\'none\';">Play Again</button>';
+  overlay.style.display='flex';
+}
+
+function updateHUD() {
+  const totalGoal=Object.values(scores).reduce((a,b)=>a+b,0);
+  document.getElementById('p1ScoreBadge').textContent='P1 💰$'+(scores[1]||0);
+  document.getElementById('p2ScoreBadge').textContent=(aiActive?'🤖 AI':'P2')+' 💰$'+(scores[2]||0);
+  document.getElementById('goalBadge').textContent='Goal: $'+GOALS[level];
+  document.getElementById('levelBadge').textContent='Lv '+level+'/'+MAX_LEVEL;
+  document.getElementById('dynBadge').textContent='💣 ×'+(dynamites[currentPlayer]||0);
+  if(numPlayers===2||aiActive)
+    document.getElementById('turnBadge').textContent=(currentPlayer===1?'P1':(aiActive?'AI':'P2'))+"'s Turn";
+}
+
+// ── Input ──────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(gameState!=='playing') return;
+  if(e.code==='ArrowDown'||e.code==='Space'){ e.preventDefault(); launchClaw(currentPlayer); }
+  if(e.code==='KeyD'||e.code==='KeyX') useDynamite(currentPlayer);
+  // P2 controls in 2-player mode
+  if(numPlayers===2){
+    if(e.code==='KeyS') launchClaw(2);
+    if(e.code==='KeyF') useDynamite(2);
+  }
+});
+canvas.addEventListener('click',()=>{ if(gameState==='playing') launchClaw(currentPlayer); });
+
+function launchClaw(p) {
+  const cl=claws[p]; if(!cl) return;
+  if(cl.state==='swinging') cl.state='extending';
+}
+
+function useDynamite(p) {
+  if((dynamites[p]||0)<=0||!claws[p]||!claws[p].hookedItem) return;
+  dynamites[p]--;
+  spawnExplosion(claws[p].hookedItem.x,claws[p].hookedItem.y);
+  claws[p].hookedItem.exploded=true; claws[p].hookedItem=null;
+  claws[p].state='retracting'; updateHUD();
+}
+
+// ── AI ──────────────────────────────────────────────────────────────────────
+let aiPhase='wait';
+function updateAI() {
+  const cl=claws[2]; if(!cl) return;
+  if(cl.state==='swinging') {
+    const px2=pivotX(2);
+    // Score items by value-to-distance ratio (avoids grabbing worthless rocks far away)
+    const available=items.filter(it=>!it.grabbed&&!it.exploded&&it.y>PIVOT_Y);
+    if(!available.length) { if(Math.random()<0.02) launchClaw(2); return; }
+    const targetItem=available.sort((a,b)=>{
+      const va=ITEM_TYPES[a.type].value, vb=ITEM_TYPES[b.type].value;
+      const da=Math.hypot(a.x-px2,a.y-PIVOT_Y)+1;
+      const db=Math.hypot(b.x-px2,b.y-PIVOT_Y)+1;
+      return (vb/db)-(va/da); // value per pixel of rope
+    })[0];
+    // Compute angle to target (0° = straight down)
+    const targetAngle=Math.atan2(targetItem.x-px2, targetItem.y-PIVOT_Y)*180/Math.PI;
+    const diff=targetAngle-cl.angle;
+    // Fire when claw is within ±6° of target
+    if(Math.abs(diff)<6) launchClaw(2);
+  }
+}
+
+// ── Physics / update ──────────────────────────────────────────────────────────
+function update() {
+  if(gameState!=='playing') return;
+  const CW=canvas.width,CH=canvas.height;
+
+  if(magnetTime>0) {
+    magnetTime-=1/60;
+    const px1=pivotX(1);
+    items.forEach(it=>{
+      if(it.grabbed||it.exploded) return;
+      if(ITEM_TYPES[it.type].value>0&&Math.hypot(it.x-px1,it.y-PIVOT_Y)<120) {
+        it.x+=(px1-it.x)*0.02; it.y+=(PIVOT_Y-it.y)*0.02;
+      }
+    });
+  }
+
+  if(aiActive) updateAI();
+
+  const playersToUpdate = numPlayers===2 ? [1,2] : (aiActive?[1,2]:[1]);
+  playersToUpdate.forEach(p=>{
+    const cl=claws[p]; if(!cl) return;
+    const px=pivotX(p), py=PIVOT_Y;
+    const retSpeedMult=speedBoost?1.7:1.0;
+
+    if(cl.state==='swinging') {
+      cl.angle+=CLAW_SPEED*cl.dir;
+      if(cl.angle>70){cl.angle=70;cl.dir=-1;}
+      if(cl.angle<-70){cl.angle=-70;cl.dir=1;}
+      cl.len=CLAW_LEN_MIN;
+    }
+    const rad=(cl.angle+90)*Math.PI/180;
+    cl.x=px+Math.cos(rad)*cl.len; cl.y=py+Math.sin(rad)*cl.len;
+
+    if(cl.state==='extending') {
+      cl.len+=ROPE_SPEED;
+      cl.x=px+Math.cos(rad)*cl.len; cl.y=py+Math.sin(rad)*cl.len;
+      if(cl.x<0||cl.x>CW||cl.y>CH-10) cl.state='retracting';
+      if(!cl.hookedItem) {
+        for(const it of items) {
+          if(it.grabbed||it.exploded) continue;
+          if(Math.hypot(cl.x-it.x,cl.y-it.y)<it.radius+8) {
+            cl.hookedItem=it; it.grabbed=true;
+            if(it.type==='dynamite'){dynamites[p]=(dynamites[p]||0)+1;updateHUD();}
+            cl.state='retracting'; break;
+          }
+        }
+      }
+    }
+
+    if(cl.state==='retracting') {
+      const rm=cl.hookedItem?(RETRACT_MULT[cl.hookedItem.type]||0.5):1.0;
+      cl.len-=ROPE_SPEED*rm*retSpeedMult;
+      cl.x=px+Math.cos(rad)*cl.len; cl.y=py+Math.sin(rad)*cl.len;
+      if(cl.len<CLAW_LEN_MIN) cl.len=CLAW_LEN_MIN;
+      if(cl.hookedItem){cl.hookedItem.x=cl.x;cl.hookedItem.y=cl.y;}
+      if(cl.len<=CLAW_LEN_MIN) {
+        cl.len=CLAW_LEN_MIN;
+        if(cl.hookedItem&&!cl.hookedItem.exploded) collectItem(cl.hookedItem,p);
+        cl.hookedItem=null; cl.state='swinging';
+      }
+    }
+  });
+
+  // Particles & texts
+  particles=particles.filter(p2=>p2.life>0);
+  particles.forEach(p2=>{p2.x+=p2.vx;p2.y+=p2.vy;p2.vy+=0.25;p2.vx*=0.96;p2.life--;});
+  floatingTexts=floatingTexts.filter(t=>t.life>0);
+  floatingTexts.forEach(t=>{t.y-=1.2;t.life--;});
+}
+
+function collectItem(item,p) {
+  if(item.type==='dynamite') {
+    spawnPickupParticles(item.x,item.y,'#ef4444',10);
+  } else if(item.type==='mystery') {
+    const prizes=[200,500,1000,0,300,750];
+    const prize=prizes[Math.floor(Math.random()*prizes.length)];
+    if(prize>0){
+      const v=addScore(prize);
+      floatingTexts.push({x:pivotX(p),y:PIVOT_Y+20,text:'🎁 +$'+v,color:'#a78bfa',life:70,maxLife:70});
+    } else {
+      floatingTexts.push({x:pivotX(p),y:PIVOT_Y+20,text:'💨 Empty!',color:'#8888aa',life:60,maxLife:60});
+    }
+    spawnPickupParticles(item.x,item.y,'#a78bfa',18);
+  } else {
+    const def=ITEM_TYPES[item.type];
+    const v=addScore(def.value);
+    spawnPickupParticles(item.x,item.y,def.color,18);
+    const label=v>=1000?'$'+(v/1000).toFixed(1)+'k':'$'+v;
+    floatingTexts.push({x:pivotX(p),y:PIVOT_Y+20,text:'+'+label,color:def.color,life:55,maxLife:55});
+  }
+  item.grabbed=true;
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────────
+function spawnPickupParticles(x,y,color,n){
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*6;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-3,r:3+Math.random()*3,color,life:30+Math.random()*15,maxLife:45});}
+}
+function spawnExplosion(x,y){
+  for(let i=0;i<28;i++){const a=Math.random()*Math.PI*2,sp=3+Math.random()*9;const color=['#ef4444','#fbbf24','#f97316','#fff'][Math.floor(Math.random()*4)];particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-4,r:4+Math.random()*5,color,life:35+Math.random()*20,maxLife:55});}
+  floatingTexts.push({x,y:y-20,text:'💥 BOOM!',color:'#f97316',life:60,maxLife:60});
+}
+
+// ── Draw ───────────────────────────────────────────────────────────────────────
+function draw(){
+  const CW=canvas.width,CH=canvas.height;
+  const skyG=ctx.createLinearGradient(0,0,0,CH);
+  skyG.addColorStop(0,'#1a0a00'); skyG.addColorStop(0.25,'#2d1300'); skyG.addColorStop(1,'#0a0500');
+  ctx.fillStyle=skyG; ctx.fillRect(0,0,CW,CH);
+
+  ctx.save();
+  for(let i=0;i<12;i++){
+    const gy=GROUND_START+(i/11)*(CH-GROUND_START-20);
+    ctx.strokeStyle=`rgba(${80+i*4},${40+i*2},0,0.18)`;ctx.lineWidth=6+i*2;
+    ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(CW,gy);ctx.stroke();
+  }
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha=0.08;
+  for(let i=0;i<200;i++){
+    const tx=(i*137.5)%CW,ty=GROUND_START+(i*79.3)%(CH-GROUND_START-20);
+    ctx.fillStyle=i%3===0?'#92400e':'#6b7280';
+    ctx.beginPath();ctx.arc(tx,ty,2+(i%3),0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  // Walls
+  ctx.fillStyle='#2d1300'; ctx.fillRect(0,0,40,CH); ctx.fillRect(CW-40,0,40,CH);
+  const wL=ctx.createLinearGradient(0,0,40,0); wL.addColorStop(0,'rgba(0,0,0,0.7)'); wL.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=wL; ctx.fillRect(0,0,40,CH);
+  const wR=ctx.createLinearGradient(CW-40,0,CW,0); wR.addColorStop(0,'rgba(0,0,0,0)'); wR.addColorStop(1,'rgba(0,0,0,0.7)');
+  ctx.fillStyle=wR; ctx.fillRect(CW-40,0,40,CH);
+
+  // Magnet indicator
+  if(magnetTime>0){
+    ctx.save(); ctx.globalAlpha=0.25; ctx.fillStyle='#fbbf24';
+    ctx.beginPath(); ctx.arc(pivotX(1),PIVOT_Y,120,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+
+  // Items
+  for(const it of items){ if(!it.grabbed) drawItem(it); }
+
+  // Ropes & claws for each player
+  const playersToRender=numPlayers===2?[1,2]:(aiActive?[1,2]:[1]);
+  playersToRender.forEach(p=>{
+    const cl=claws[p]; if(!cl) return;
+    const px=pivotX(p),py=PIVOT_Y;
+    ctx.save(); ctx.strokeStyle=p===1?'#92400e':'#2563eb'; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(px,py+4); ctx.lineTo(cl.x,cl.y); ctx.stroke(); ctx.restore();
+    drawClaw(cl.x,cl.y,cl.hookedItem);
+    drawMinerPlatform(px,py,p);
+  });
+
+  // Particles & texts
+  particles.forEach(p2=>{
+    const a=p2.life/p2.maxLife; ctx.save(); ctx.globalAlpha=a;
+    ctx.fillStyle=p2.color; ctx.beginPath(); ctx.arc(p2.x,p2.y,p2.r*a+0.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+  });
+  floatingTexts.forEach(t=>{
+    const a=t.life/t.maxLife; ctx.save(); ctx.globalAlpha=a;
+    ctx.fillStyle=t.color; ctx.font='bold 18px system-ui'; ctx.textAlign='center';
+    ctx.shadowColor=t.color; ctx.shadowBlur=8; ctx.fillText(t.text,t.x,t.y); ctx.restore();
+  });
+
+  // Progress bar
+  const totalScore=Object.values(scores||{1:0}).reduce((a,b)=>a+b,0);
+  const goal=GOALS[level]||800, pct=Math.min(1,totalScore/goal);
+  ctx.save(); ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(60,8,CW-120,6);
+  const barG=ctx.createLinearGradient(60,0,60+(CW-120)*pct,0);
+  barG.addColorStop(0,'#d97706'); barG.addColorStop(1,'#fbbf24');
+  ctx.fillStyle=barG; ctx.beginPath(); ctx.roundRect(60,8,(CW-120)*pct,6,3); ctx.fill(); ctx.restore();
+}
+
+function drawItem(item){
+  const def=ITEM_TYPES[item.type],r=item.radius;
+  ctx.save(); ctx.translate(item.x,item.y);
+  if(item.type==='rock'){
+    const g=ctx.createRadialGradient(-r*0.3,-r*0.3,r*0.1,0,0,r);
+    g.addColorStop(0,'#9ca3af');g.addColorStop(0.6,'#6b7280');g.addColorStop(1,'#374151');
+    ctx.fillStyle=g; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2,rr=r*(0.75+0.25*Math.sin(i*2.3));i===0?ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr):ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}
+    ctx.closePath();ctx.fill();ctx.strokeStyle='#4b5563';ctx.lineWidth=1.5;ctx.stroke();
+  } else if(item.type==='diamond'){
+    ctx.fillStyle='#a5f3fc';ctx.shadowColor='#67e8f9';ctx.shadowBlur=16;
+    ctx.beginPath();ctx.moveTo(0,-r*1.2);ctx.lineTo(r*0.7,0);ctx.lineTo(0,r*1.2);ctx.lineTo(-r*0.7,0);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#e0f2fe';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.globalAlpha=0.4;ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.moveTo(-r*0.2,-r*0.6);ctx.lineTo(r*0.4,-r*0.1);ctx.lineTo(0,-r*0.1);ctx.closePath();ctx.fill();
+  } else if(item.type==='bag'){
+    ctx.fillStyle='#92400e';ctx.beginPath();ctx.arc(0,r*0.15,r*0.85,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#78350f';ctx.beginPath();ctx.arc(-r*0.3,-r*0.55,r*0.35,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(r*0.3,-r*0.55,r*0.35,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fbbf24';ctx.font='bold '+Math.round(r*0.9)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',0,r*0.15);
+  } else if(item.type==='dynamite'){
+    ctx.fillStyle='#ef4444';ctx.beginPath();ctx.roundRect(-r*0.6,-r,r*1.2,r*2,4);ctx.fill();
+    ctx.strokeStyle='#fca5a5';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('TNT',0,0);
+    ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-r);ctx.quadraticCurveTo(r*0.6,-r*1.4,r*0.3,-r*1.8);ctx.stroke();
+  } else if(item.type==='mystery'){
+    ctx.fillStyle='#7c3aed';ctx.shadowColor='#a78bfa';ctx.shadowBlur=14;
+    ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e9d5ff';ctx.font='bold '+Math.round(r*1.1)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',0,1);
+  } else {
+    const g=ctx.createRadialGradient(-r*0.3,-r*0.3,r*0.1,0,0,r);
+    g.addColorStop(0,lgh(def.color,60));g.addColorStop(0.5,def.color);g.addColorStop(1,drk(def.color,50));
+    ctx.fillStyle=g;ctx.shadowColor=def.color;ctx.shadowBlur=10;
+    ctx.beginPath();
+    for(let i=0;i<7;i++){const a=(i/7)*Math.PI*2,rr=r*(0.8+0.2*Math.sin(i*1.9+0.5));i===0?ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr):ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}
+    ctx.closePath();ctx.fill();
+    ctx.globalAlpha=0.5;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(-r*0.3,-r*0.3,r*0.3,r*0.2,-0.5,0,Math.PI*2);ctx.fill();
+  }
+  // Value label
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha=0.7; ctx.fillStyle='#fde68a';
+  ctx.font='bold 9px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(def.label,item.x,item.y+item.radius+2); ctx.restore();
+}
+
+function drawClaw(x,y,hooked){
+  ctx.save(); ctx.translate(x,y);
+  const r=9;
+  ctx.fillStyle='#94a3b8'; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.strokeStyle='#cbd5e1'; ctx.lineWidth=2.5; ctx.lineCap='round';
+  [-1,0,1].forEach(s=>{ctx.beginPath();ctx.moveTo(s*5,r);ctx.lineTo(s*8,r+8);ctx.stroke();});
+  if(hooked){ctx.globalAlpha=0.4;ctx.fillStyle=ITEM_TYPES[hooked.type].color;ctx.shadowColor=ITEM_TYPES[hooked.type].color;ctx.shadowBlur=20;ctx.beginPath();ctx.arc(0,0,r*1.8,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+}
+
+function drawMinerPlatform(px,py,p){
+  ctx.save(); ctx.translate(px,py);
+  // Platform
+  const platW=90,platH=16;
+  ctx.fillStyle=p===2?'#1e3a5f':'#451a03';
+  ctx.beginPath();ctx.roundRect(-platW/2,0,platW,platH,4);ctx.fill();
+  ctx.strokeStyle=p===2?'#2563eb':'#92400e';ctx.lineWidth=1.5;ctx.stroke();
+  // Body (no face — just a helmet+body silhouette)
+  ctx.fillStyle=p===2?'#1e40af':'#1c1917';
+  ctx.beginPath();ctx.roundRect(-16,-40,32,44,4);ctx.fill();
+  // Helmet
+  ctx.fillStyle=p===2?'#3b82f6':'#b45309';
+  ctx.beginPath();ctx.arc(0,-44,17,Math.PI,0);ctx.fill();
+  ctx.fillRect(-17,-44,34,8);
+  // Visor (instead of face)
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.beginPath();ctx.roundRect(-11,-46,22,12,3);ctx.fill();
+  ctx.strokeStyle=p===2?'rgba(147,197,253,0.5)':'rgba(254,243,199,0.4)';ctx.lineWidth=1;ctx.stroke();
+  // Helmet light
+  ctx.fillStyle=p===2?'#93c5fd':'#fef3c7'; ctx.shadowColor=p===2?'#60a5fa':'#fef3c7'; ctx.shadowBlur=10;
+  ctx.beginPath();ctx.arc(0,-52,4,0,Math.PI*2);ctx.fill(); ctx.shadowBlur=0;
+  // Player label
+  ctx.fillStyle=p===2?'#93c5fd':'#fbbf24'; ctx.font='bold 8px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(p===2&&aiActive?'AI':'P'+p,0,-16);
+  // Rope attachment
+  ctx.fillStyle='#78350f'; ctx.beginPath(); ctx.arc(0,4,5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ── Market ────────────────────────────────────────────────────────────────────
+function openMarket(){
+  const modal=document.getElementById('marketModal');
+  document.getElementById('marketGold').textContent='Budget: $'+marketGold;
+  let html='';
+  MARKET_ITEMS.forEach((item,i)=>{
+    const canBuy=marketGold>=item.price;
+    html+=`<div class="market-item">
+      <span class="icon">${item.icon}</span>
+      <div class="info"><div class="name">${item.name}</div><div class="desc">${item.desc}</div></div>
+      <span class="price">$${item.price}</span>
+      <button class="buy-btn" ${canBuy?'':'disabled'} onclick="buyMarketItem(${i})">Buy</button>
+    </div>`;
+  });
+  document.getElementById('marketItems').innerHTML=html;
+  modal.classList.add('open');
+}
+function closeMarket(){document.getElementById('marketModal').classList.remove('open');updateHUD();}
+function buyMarketItem(i){
+  const item=MARKET_ITEMS[i];
+  if(marketGold<item.price) return;
+  marketGold-=item.price; item.onBuy();
+  openMarket(); // refresh
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function lgh(hex,a){const n=parseInt(hex.slice(1),16);return `rgb(${Math.min(255,(n>>16)+a)},${Math.min(255,((n>>8)&0xff)+a)},${Math.min(255,(n&0xff)+a)})`;}
+function drk(hex,a){const n=parseInt(hex.slice(1),16);return `rgb(${Math.max(0,(n>>16)-a)},${Math.max(0,((n>>8)&0xff)-a)},${Math.max(0,(n&0xff)-a)})`;}
+
+function loop(){update();draw();if(gameState==='playing') rafId=requestAnimationFrame(loop);}
+
+async function goBack(){
+  try{const a=window.spaceAPI;if(a?.tabs){const ts=await a.tabs.list();const ac=ts.find(t=>t.isActive);if(ac){a.tabs.navigate(ac.id,'space://games');return;}}}catch(_){}
+  history.back();
+}
+
+(function idleDraw(){
+  resize(); const CW=canvas.width,CH=canvas.height;
+  const g=ctx.createLinearGradient(0,0,0,CH); g.addColorStop(0,'#1a0a00'); g.addColorStop(1,'#0a0500');
+  ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
+})();
+</script>
+</body>
+</html>

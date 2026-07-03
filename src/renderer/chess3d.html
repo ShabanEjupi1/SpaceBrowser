@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Star Trek 3D Chess – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:#0a0a0e; display:flex; flex-direction:column; align-items:center;
+      min-height:100vh; font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag;
+    }
+    .header {
+      width:100%; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      padding:8px 20px; background:#13131c;
+      border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0;
+    }
+    .back-btn {
+      background:#1a1a28; border:1px solid rgba(255,255,255,0.07);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:5px 12px;
+      cursor:pointer; display:flex; align-items:center; gap:5px;
+    }
+    .back-btn:hover { color:#e8e8f0; }
+    .header-btn {
+      background:#1a1a28; border:1px solid rgba(255,255,255,0.07);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:5px 12px;
+      cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:6px;
+    }
+    .header-btn:hover { color:#e8e8f0; border-color:rgba(37,99,235,0.4); }
+    .info-row { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:12px; flex-wrap:wrap; }
+    .badge { background:#1a1a28; border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:4px 12px; font-weight:700; }
+    .badge.active { border-color:rgba(37,99,235,0.5); color:#93c5fd; }
+
+    .main { display:flex; flex-direction:column; align-items:center; padding:16px; gap:14px; width:100%; }
+    .boards-container {
+      display:flex; flex-direction:column; align-items:center; gap:0;
+      perspective:900px;
+    }
+    .board-level { display:flex; flex-direction:column; gap:0; }
+    .board-label {
+      font-size:11px; color:#8888aa; text-align:center; margin-bottom:4px; font-weight:600; letter-spacing:0.05em;
+    }
+    .level-wrapper {
+      padding:10px; background:#1a1a28; border:1px solid rgba(255,255,255,0.07);
+      border-radius:10px; margin-bottom:8px;
+      transition: box-shadow 0.2s;
+    }
+    .level-wrapper.active-level { box-shadow:0 0 0 2px rgba(37,99,235,0.5), 0 8px 32px rgba(37,99,235,0.15); }
+
+    .board-row { display:flex; }
+    .cell {
+      width:54px; height:54px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; position:relative; transition:background 0.1s;
+      font-size:30px;
+    }
+    .cell.light  { background:#c8aa6e; }
+    .cell.dark   { background:#7b5e3b; }
+    .cell.selected      { background:#2563eb !important; }
+    .cell.legal-move    { background:#16a34a !important; }
+    .cell.last-move     { background:rgba(250,204,21,0.35) !important; }
+    .cell.check-flash   { background:rgba(239,68,68,0.5) !important; }
+    .cell:hover         { filter:brightness(1.15); }
+    .cell .coord {
+      position:absolute; bottom:2px; right:3px; font-size:8px;
+      color:rgba(0,0,0,0.35); font-family:monospace; pointer-events:none;
+    }
+    .cell .piece-wrap { pointer-events:none; }
+
+    .status-bar {
+      background:#13131c; border:1px solid rgba(255,255,255,0.07);
+      border-radius:8px; padding:10px 20px; font-size:13px;
+      min-width:340px; text-align:center; color:#cbd5e1;
+    }
+    .captured { display:flex; gap:4px; flex-wrap:wrap; font-size:18px; min-height:24px; }
+
+    /* Captured pieces row */
+    .cap-row { display:flex; gap:16px; align-items:center; }
+    .cap-label { font-size:11px; color:#8888aa; }
+
+    /* Info panel */
+    .info-panel {
+      background:#13131c; border:1px solid rgba(255,255,255,0.07);
+      border-radius:8px; padding:12px 16px; font-size:12px; color:#64748b;
+      max-width:680px; line-height:1.6;
+    }
+    .info-panel b { color:#94a3b8; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:15px;font-weight:700;">♛ Star Trek 3D Chess</span>
+  <button class="header-btn" onclick="toggleAtkMode()" id="atkBtn" title="In Attack Board mode, click a highlighted attack board to move it">
+    🪐 Move Atk Board: Off
+  </button>
+  <button class="header-btn" onclick="undoMove()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6.5 C2 3.5 4.5 1.5 7 1.5s5 2 5 5-2.5 5-5 5H4"/><polyline points="2,4 2,7 5,7"/></svg>
+    Undo
+  </button>
+  <button class="header-btn" onclick="newGame()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M6.5 3v3.5l2.5 2"/></svg>
+    New Game
+  </button>
+  <button class="header-btn" id="aiToggleBtn" onclick="toggleAI()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M4.5 4.5h4M4.5 6.5h4M4.5 8.5h2"/></svg>
+    vs AI: Off
+  </button>
+  <div class="info-row">
+    <div class="badge" id="turnBadge">⬜ White to move</div>
+    <div class="badge" id="statusBadge">Playing</div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Upper board (Black's attack boards: QL5, KL5 anchored to upper corners) -->
+  <div class="level-wrapper" id="levelUpper">
+    <div class="board-label">Level 5 — Black's Attack Zone (QB/KB boards)</div>
+    <div id="boardUpper"></div>
+  </div>
+
+  <!-- Attack boards for black (QL5 top-left, KL5 top-right) -->
+  <div id="atkBoards" style="display:flex;gap:32px;margin:4px 0;align-items:flex-start;justify-content:center;"></div>
+
+  <!-- Main board -->
+  <div class="level-wrapper" id="levelMain">
+    <div class="board-label">Level 2/3 — Main Board (Standard 8×8)</div>
+    <div id="boardMain"></div>
+  </div>
+
+  <!-- Lower board (White's attack boards: QL1, KL1 anchored to lower corners) -->
+  <div class="level-wrapper" id="levelLower">
+    <div class="board-label">Level 1 — White's Attack Zone (QB/KB boards)</div>
+    <div id="boardLower"></div>
+  </div>
+
+  <div class="status-bar" id="statusEl">Select a piece to move · Cross levels with ↕ promoted moves</div>
+
+  <div class="cap-row">
+    <span class="cap-label">White captured:</span>
+    <div class="captured" id="capWhite"></div>
+    <span class="cap-label" style="margin-left:8px">Black captured:</span>
+    <div class="captured" id="capBlack"></div>
+  </div>
+
+  <div class="info-panel">
+    <b>⭐ Star Trek 3D Chess Rules:</b><br>
+    Three main boards stacked vertically (Levels 1–5), plus four 2×2 <b>Attack Boards</b> (QL1, KL1 for White; QL5, KL5 for Black).
+    Standard chess movement applies within each level. Pieces may <b>cross levels</b> via the center transfer squares (↕ d4/e4).
+    <b>Attack Board movement</b>: A player may spend their entire turn to move an Attack Board to an adjacent anchor point,
+    provided it has at most <b>one piece of their own color</b> and no enemy pieces.
+    Pieces on an Attack Board maintain their position when the board moves.
+    Kings may <b>not</b> cross levels. Pieces on higher levels block movement through the same (x,y) column.
+    <br><br>
+    <b>Controls:</b> Click <em>"Move Atk Board"</em> button to enter board-move mode, then click an Attack Board to select it
+    and click a valid anchor point to move it. Toggle off to return to piece-move mode.
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Piece constants ────────────────────────────────────────────────────────────
+const W = 'w', B = 'b';
+const KING   = 'K', QUEEN  = 'Q', ROOK  = 'R';
+const BISHOP = 'B', KNIGHT = 'N', PAWN  = 'P';
+
+const GLYPHS = {
+  wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',
+  bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟',
+};
+
+// ── Game state ─────────────────────────────────────────────────────────────────
+// board: 3 levels (0=upper, 1=main, 2=lower), each 8×8
+// cell: null | { color, type }
+let boards;      // boards[level][row][col]
+let sideToMove;  // 'w' or 'b'
+let selected;    // { level, row, col } or null
+let legalMoves;  // array of { level, row, col, special } for selected piece
+let history;     // for undo — array of snapshots
+let capturedByWhite, capturedByBlack;
+let gameOver;
+let castling;    // { wK, wQ, bK, bQ } (main level only)
+let enPassantSq; // { level, row, col } or null
+
+// ── Attack Board state (Star Trek variant) ────────────────────────────────────
+// 4 attack boards: index 0=QL1 (White, anchor bottom-left), 1=KL1 (White, anchor bottom-right)
+//                  2=QL5 (Black, anchor top-left),         3=KL5 (Black, anchor top-right)
+// anchorIndex: 0=outer corner, 1=adjacent to outer corner (two valid positions each)
+// pieces: 2×2 grid of pieces (or null)
+const ATK_BOARD_DEFS = [
+  { name:'QL1', owner:'w', anchorOptions:[[6,0],[6,1]], anchorIdx:0 },
+  { name:'KL1', owner:'w', anchorOptions:[[6,6],[6,5]], anchorIdx:0 },
+  { name:'QL5', owner:'b', anchorOptions:[[1,0],[1,1]], anchorIdx:0 },
+  { name:'KL5', owner:'b', anchorOptions:[[1,6],[1,5]], anchorIdx:0 },
+];
+let atkBoards = ATK_BOARD_DEFS.map(d => ({
+  ...d, pieces: [[null,null],[null,null]]
+}));
+let atkModeOn = false;     // are we in attack-board-move mode?
+let atkSelected = null;    // index of selected attack board
+
+function toggleAtkMode() {
+  atkModeOn = !atkModeOn;
+  atkSelected = null;
+  document.getElementById('atkBtn').textContent = '🪐 Move Atk Board: ' + (atkModeOn ? '✅ ON' : 'Off');
+  renderAtkBoards();
+  updateStatus(atkModeOn ? 'Attack Board mode: click an attack board you own, then click its new anchor.' : '');
+}
+
+function renderAtkBoards() {
+  const container = document.getElementById('atkBoards');
+  container.innerHTML = '';
+  atkBoards.forEach((ab, idx) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:inline-flex;flex-direction:column;align-items:center;gap:3px;';
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:10px;color:#8888aa;font-weight:600;';
+    label.textContent = ab.name + ' (' + (ab.owner==='w'?'White':'Black') + ')';
+    wrap.appendChild(label);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;background:#1a1a28;border:1px solid rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;';
+    const isSelected = atkSelected===idx;
+    const canSelect = atkModeOn && ab.owner===sideToMove;
+    if (isSelected) grid.style.boxShadow = '0 0 0 2px #fbbf24';
+    for (let r=0;r<2;r++) for (let c=0;c<2;c++) {
+      const cell = document.createElement('div');
+      cell.style.cssText = `width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:${canSelect?'pointer':'default'};background:${(r+c)%2===0?'#c8aa6e':'#7b5e3b'};`;
+      const p = ab.pieces[r][c];
+      if (p) cell.textContent = GLYPHS[p.color+p.type]||'';
+      cell.addEventListener('click', () => handleAtkBoardClick(idx, r, c));
+      grid.appendChild(cell);
+    }
+    // Move buttons (only when selected)
+    if (isSelected) {
+      const anchorOther = 1 - ab.anchorIdx;
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:4px;margin-top:3px;';
+      const btn = document.createElement('button');
+      btn.style.cssText = 'font-size:10px;padding:2px 8px;background:#b45309;border:none;border-radius:4px;color:#fff;cursor:pointer;';
+      btn.textContent = '→ Move to Anchor ' + (anchorOther+1);
+      btn.addEventListener('click', () => moveAtkBoard(idx, anchorOther));
+      btnRow.appendChild(btn);
+      const cancelBtn = document.createElement('button');
+      cancelBtn.style.cssText = 'font-size:10px;padding:2px 8px;background:#374151;border:none;border-radius:4px;color:#fff;cursor:pointer;';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => { atkSelected=null; renderAtkBoards(); });
+      btnRow.appendChild(cancelBtn);
+      wrap.appendChild(btnRow);
+    }
+    wrap.insertBefore(grid, label.nextSibling);
+    container.appendChild(wrap);
+  });
+}
+
+function handleAtkBoardClick(idx, r, c) {
+  if (!atkModeOn) return;
+  const ab = atkBoards[idx];
+  if (ab.owner !== sideToMove) return;
+  // Check eligibility: at most 1 own piece, no enemy pieces
+  let ownCount = 0;
+  for (let pr=0;pr<2;pr++) for (let pc=0;pc<2;pc++) {
+    const p = ab.pieces[pr][pc];
+    if (!p) continue;
+    if (p.color !== ab.owner) { updateStatus('Cannot move: enemy piece on this attack board.'); return; }
+    ownCount++;
+  }
+  if (ownCount > 1) { updateStatus('Cannot move: more than one piece on attack board.'); return; }
+  atkSelected = idx;
+  renderAtkBoards();
+}
+
+function moveAtkBoard(idx, newAnchorIdx) {
+  // Moving an attack board costs a full turn
+  history.push({ boards:deepCloneBoards(boards), sideToMove, castling:{...castling},
+    enPassantSq:enPassantSq?{...enPassantSq}:null, capturedByWhite:[...capturedByWhite],
+    capturedByBlack:[...capturedByBlack], atkBoards:atkBoards.map(a=>({...a,pieces:a.pieces.map(r=>[...r])})) });
+  atkBoards[idx].anchorIdx = newAnchorIdx;
+  atkSelected = null;
+  sideToMove = sideToMove===W ? B : W;
+  atkModeOn = false;
+  document.getElementById('atkBtn').textContent = '🪐 Move Atk Board: Off';
+  renderAtkBoards();
+  render();
+  updateStatus('Attack board moved — ' + (sideToMove===W?'White':'Black') + '\'s turn.');
+  if (!gameOver && aiEnabled && sideToMove===B) scheduleAI();
+}
+
+// ── AI state ──────────────────────────────────────────────────────────────────
+let aiEnabled = false;    // toggle via header button
+let aiThinking = false;   // prevent double triggers
+
+function toggleAI() {
+  aiEnabled = !aiEnabled;
+  const btn = document.getElementById('aiToggleBtn');
+  btn.textContent = '';
+  const svg = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M4.5 4.5h4M4.5 6.5h4M4.5 8.5h2"/></svg>`;
+  btn.innerHTML = svg + ` vs AI: ${aiEnabled ? '<span style="color:#34d399">On</span>' : 'Off'}`;
+  if (aiEnabled && sideToMove === B && !gameOver) scheduleAI();
+}
+
+// Transfer squares (d4=col3row4, e4=col4row4 in 0-indexed — cols 3,4 rows 3,4)
+const TRANSFER_COLS = [3, 4];
+const TRANSFER_ROWS = [3, 4];
+const isTransfer = (r,c) => TRANSFER_ROWS.includes(r) && TRANSFER_COLS.includes(c);
+
+function emptyBoard() { return Array.from({length:8}, ()=>Array(8).fill(null)); }
+
+function initialBoards() {
+  const b = [emptyBoard(), emptyBoard(), emptyBoard()];
+  // Main board standard setup
+  const BACK = [ROOK,KNIGHT,BISHOP,QUEEN,KING,BISHOP,KNIGHT,ROOK];
+  // White back rank row 7, pawns row 6
+  BACK.forEach((t,c)=>{ b[1][7][c]={color:W,type:t}; b[1][0][c]={color:B,type:t}; });
+  for(let c=0;c<8;c++){ b[1][6][c]={color:W,type:PAWN}; b[1][1][c]={color:B,type:PAWN}; }
+  return b;
+}
+
+function deepCloneBoards(bs) {
+  return bs.map(level => level.map(row => row.map(cell => cell ? {...cell} : null)));
+}
+
+function newGame() {
+  boards        = initialBoards();
+  sideToMove    = W;
+  selected      = null;
+  legalMoves    = [];
+  history       = [];
+  capturedByWhite = [];
+  capturedByBlack = [];
+  gameOver      = false;
+  castling      = { wK:true, wQ:true, bK:true, bQ:true };
+  enPassantSq   = null;
+  aiThinking    = false;
+  // Reset attack boards
+  atkBoards = ATK_BOARD_DEFS.map(d => ({ ...d, pieces: [[null,null],[null,null]] }));
+  atkModeOn = false; atkSelected = null;
+  document.getElementById('atkBtn').textContent = '🪐 Move Atk Board: Off';
+  render();
+  updateStatus('');
+}
+
+// ── Move generation ────────────────────────────────────────────────────────────
+function getLegalMoves(level, row, col) {
+  const cell = boards[level][row][col];
+  if (!cell) return [];
+  const pseudo = getPseudoMoves(level, row, col, boards, castling, enPassantSq);
+  // Filter moves that leave own king in check
+  return pseudo.filter(m => {
+    const [nb,nc] = applyMoveToBoards(deepCloneBoards(boards), {from:{level,row,col},to:m}, castling);
+    return !isInCheck(nc.color || cell.color, nb);
+  });
+}
+
+function getPseudoMoves(level, row, col, bs, castl, ep) {
+  const cell = bs[level][row][col];
+  if (!cell) return [];
+  const moves = [];
+  const {color,type} = cell;
+  const opp = color === W ? B : W;
+
+  const add = (l,r,c,special) => {
+    if (r<0||r>7||c<0||c>7||l<0||l>2) return;
+    const target = bs[l][r][c];
+    if (target && target.color === color) return;
+    moves.push({level:l,row:r,col:c,special:special||null});
+  };
+  const slide = (l,dr,dc) => {
+    let r=row+dr,c=col+dc;
+    while(r>=0&&r<8&&c>=0&&c<8){
+      const t=bs[l][r][c];
+      if(t){ if(t.color===opp) add(l,r,c); break; }
+      add(l,r,c);
+      r+=dr; c+=dc;
+    }
+  };
+
+  if (type===PAWN) {
+    const dir    = color===W ? -1 : 1;
+    const start  = color===W ?  6 :  1;
+    // Forward
+    if (!bs[level][row+dir]?.[col]) {
+      add(level, row+dir, col, row+dir===0||row+dir===7?'promote':null);
+      if (row===start && !bs[level][row+2*dir]?.[col]) add(level,row+2*dir,col,'double');
+    }
+    // Captures
+    for(const dc of[-1,1]){
+      const tr=row+dir,tc=col+dc;
+      if(tr>=0&&tr<8&&tc>=0&&tc<8){
+        const t=bs[level][tr][tc];
+        if(t&&t.color===opp) add(level,tr,tc,tr===0||tr===7?'promote':null);
+        // En passant
+        if(ep&&ep.level===level&&ep.row===tr&&ep.col===tc) add(level,tr,tc,'ep');
+      }
+    }
+    // Level transfer via pawn advance to transfer square
+    if (isTransfer(row+dir,col) && !bs[level][row+dir][col]) {
+      // Can ascend/descend
+      const tl = color===W ? level-1 : level+1;
+      if (tl>=0 && tl<=2 && !bs[tl][row+dir][col]) moves.push({level:tl,row:row+dir,col,special:'transfer'});
+    }
+  }
+  else if (type===KNIGHT) {
+    for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) add(level,row+dr,col+dc);
+  }
+  else if (type===BISHOP) {
+    for(const [dr,dc] of [[-1,-1],[-1,1],[1,-1],[1,1]]) slide(level,dr,dc);
+  }
+  else if (type===ROOK) {
+    for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]) slide(level,dr,dc);
+  }
+  else if (type===QUEEN) {
+    for(const [dr,dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) slide(level,dr,dc);
+  }
+  else if (type===KING) {
+    for(const [dr,dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) add(level,row+dr,col+dc);
+    // Castling (main board only, standard chess positions)
+    if (level===1) {
+      const rank = color===W?7:0;
+      if (castl[`${color}K`] && row===rank && col===4) {
+        if (!bs[level][rank][5]&&!bs[level][rank][6]&&bs[level][rank][7]?.type===ROOK&&bs[level][rank][7]?.color===color)
+          if (!isSqAttacked(level,rank,4,opp,bs)&&!isSqAttacked(level,rank,5,opp,bs))
+            moves.push({level,row:rank,col:6,special:'castleK'});
+        if (!bs[level][rank][3]&&!bs[level][rank][2]&&!bs[level][rank][1]&&bs[level][rank][0]?.type===ROOK&&bs[level][rank][0]?.color===color)
+          if (!isSqAttacked(level,rank,4,opp,bs)&&!isSqAttacked(level,rank,3,opp,bs))
+            moves.push({level,row:rank,col:2,special:'castleQ'});
+      }
+    }
+  }
+
+  // Non-pawn pieces can cross levels via transfer squares
+  if (type!==PAWN&&type!==KING&&isTransfer(row,col)) {
+    for(let tl=0;tl<=2;tl++){
+      if(tl===level) continue;
+      // Can land on transfer squares of other levels
+      for(const [tr,tc] of [[3,3],[3,4],[4,3],[4,4]]) {
+        if(tr===row&&tc===col) continue;
+        const t=bs[tl][tr][tc];
+        if(!t||t.color===opp) moves.push({level:tl,row:tr,col:tc,special:'transfer'});
+      }
+    }
+  }
+
+  return moves;
+}
+
+function isSqAttacked(level, r, c, byColor, bs) {
+  for(let sr=0;sr<8;sr++) for(let sc=0;sc<8;sc++){
+    const p=bs[level][sr][sc];
+    if(!p||p.color!==byColor) continue;
+    const pm=getPseudoMoves(level,sr,sc,bs,{wK:false,wQ:false,bK:false,bQ:false},null);
+    if(pm.some(m=>m.level===level&&m.row===r&&m.col===c)) return true;
+  }
+  return false;
+}
+
+function isInCheck(color, bs) {
+  // Find king on any level
+  for(let l=0;l<=2;l++) for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p=bs[l][r][c];
+    if(p?.type===KING&&p.color===color){
+      const opp=color===W?B:W;
+      // Check all opponent pieces on same level
+      for(let sr=0;sr<8;sr++) for(let sc=0;sc<8;sc++){
+        const a=bs[l][sr][sc];
+        if(!a||a.color!==opp) continue;
+        const pm=getPseudoMoves(l,sr,sc,bs,{wK:false,wQ:false,bK:false,bQ:false},null);
+        if(pm.some(m=>m.level===l&&m.row===r&&m.col===c)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Apply a move and return [newBoards, newCastling]
+function applyMoveToBoards(bs, move, castl) {
+  const nc = {...castl};
+  const {from,to} = move;
+  const piece = bs[from.level][from.row][from.col];
+  if (!piece) return [bs, nc];
+
+  // Capture
+  const captured = bs[to.level][to.row][to.col];
+
+  bs[from.level][from.row][from.col] = null;
+  bs[to.level][to.row][to.col] = {...piece};
+
+  // En passant capture
+  if (to.special==='ep' && from.level===to.level) {
+    const dir = piece.color===W?1:-1;
+    bs[to.level][to.row+dir][to.col] = null;
+  }
+  // Promotion (auto queen)
+  if (to.special==='promote') {
+    bs[to.level][to.row][to.col] = {color:piece.color, type:QUEEN};
+  }
+  // Castling rook
+  if (to.special==='castleK') {
+    const rank=piece.color===W?7:0;
+    bs[1][rank][5]=bs[1][rank][7]; bs[1][rank][7]=null;
+  }
+  if (to.special==='castleQ') {
+    const rank=piece.color===W?7:0;
+    bs[1][rank][3]=bs[1][rank][0]; bs[1][rank][0]=null;
+  }
+
+  // Update castling rights
+  if (piece.type===KING) {
+    if (piece.color===W) { nc.wK=false; nc.wQ=false; }
+    else                  { nc.bK=false; nc.bQ=false; }
+  }
+  if (piece.type===ROOK&&from.level===1) {
+    if (from.col===0&&from.row===7) nc.wQ=false;
+    if (from.col===7&&from.row===7) nc.wK=false;
+    if (from.col===0&&from.row===0) nc.bQ=false;
+    if (from.col===7&&from.row===0) nc.bK=false;
+  }
+
+  return [bs, nc, captured];
+}
+
+// ── Undo ───────────────────────────────────────────────────────────────────────
+function undoMove() {
+  if (history.length === 0) return;
+  const snap = history.pop();
+  boards           = snap.boards;
+  sideToMove       = snap.sideToMove;
+  castling         = snap.castling;
+  enPassantSq      = snap.enPassantSq;
+  capturedByWhite  = snap.capturedByWhite;
+  capturedByBlack  = snap.capturedByBlack;
+  if (snap.atkBoards) atkBoards = snap.atkBoards;
+  gameOver         = false;
+  selected         = null;
+  legalMoves       = [];
+  render();
+  updateStatus('');
+}
+
+// ── Move execution ─────────────────────────────────────────────────────────────
+function executeMove(from, to) {
+  // Push snapshot for undo
+  history.push({
+    boards: deepCloneBoards(boards),
+    sideToMove,
+    castling: {...castling},
+    enPassantSq: enPassantSq ? {...enPassantSq} : null,
+    capturedByWhite: [...capturedByWhite],
+    capturedByBlack: [...capturedByBlack],
+  });
+
+  const piece = boards[from.level][from.row][from.col];
+  const [nb, nc, captured] = applyMoveToBoards(deepCloneBoards(boards), {from,to}, castling);
+  boards   = nb;
+  castling = nc;
+
+  // Track captures
+  if (captured) {
+    const g = GLYPHS[`${captured.color}${captured.type}`];
+    if (piece.color===W) capturedByWhite.push(g);
+    else                  capturedByBlack.push(g);
+  }
+
+  // En passant
+  enPassantSq = null;
+  if (piece.type===PAWN && Math.abs(to.row-from.row)===2) {
+    enPassantSq = {level:from.level, row:(from.row+to.row)/2, col:from.col};
+  }
+
+  // Switch turn
+  sideToMove = sideToMove===W ? B : W;
+  selected = null; legalMoves = [];
+
+  // Check / checkmate
+  const inCheck = isInCheck(sideToMove, boards);
+  const hasMoves = hasAnyLegalMove(sideToMove);
+
+  if (!hasMoves) {
+    if (inCheck) {
+      const winner = sideToMove===W ? 'Black' : 'White';
+      updateStatus(`♛ Checkmate! ${winner} wins.`);
+      document.getElementById('statusBadge').textContent = 'Checkmate';
+    } else {
+      updateStatus('½ Stalemate — draw.');
+      document.getElementById('statusBadge').textContent = 'Stalemate';
+    }
+    gameOver = true;
+  } else if (inCheck) {
+    updateStatus(`⚠️ ${sideToMove===W?'White':'Black'} is in check!`);
+  } else {
+    updateStatus('');
+  }
+
+  render();
+
+  // Trigger AI after White's move
+  if (!gameOver && aiEnabled && sideToMove === B) scheduleAI();
+}
+
+function hasAnyLegalMove(color) {
+  for(let l=0;l<=2;l++) for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    if(boards[l][r][c]?.color===color && getLegalMoves(l,r,c).length>0) return true;
+  }
+  return false;
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────────────
+function cellClick(level, row, col) {
+  if (gameOver) return;
+  // Block human input while AI is calculating
+  if (aiEnabled && sideToMove === B) return;
+  const cell = boards[level][row][col];
+
+  // If a move is legal here, execute it
+  const target = legalMoves.find(m => m.level===level && m.row===row && m.col===col);
+  if (selected && target) {
+    executeMove(selected, target);
+    return;
+  }
+
+  // Select own piece
+  if (cell && cell.color === sideToMove) {
+    selected   = {level, row, col};
+    legalMoves = getLegalMoves(level, row, col);
+    render();
+    return;
+  }
+
+  // Deselect
+  selected   = null;
+  legalMoves = [];
+  render();
+}
+
+function render() {
+  renderLevel('boardUpper', 0);
+  renderLevel('boardMain',  1);
+  renderLevel('boardLower', 2);
+  renderAtkBoards();
+
+  // Highlight active level
+  for (let l=0;l<=2;l++){
+    const ids=['levelUpper','levelMain','levelLower'];
+    const el=document.getElementById(ids[l]);
+    el.classList.toggle('active-level', selected?.level===l);
+  }
+
+  // Captured pieces
+  document.getElementById('capWhite').innerHTML = capturedByWhite.join(' ');
+  document.getElementById('capBlack').innerHTML = capturedByBlack.join(' ');
+
+  // Turn badge
+  document.getElementById('turnBadge').textContent =
+    sideToMove===W ? '⬜ White to move' : '⬛ Black to move';
+}
+
+function renderLevel(domId, level) {
+  const container = document.getElementById(domId);
+  container.innerHTML = '';
+
+  // Check if king on this level is in check
+  const inCheckOnLevel = isInCheck(sideToMove, boards) && hasKingOnLevel(sideToMove, level);
+
+  for (let r=0;r<8;r++){
+    const row = document.createElement('div');
+    row.className = 'board-row';
+    for (let c=0;c<8;c++){
+      const td = document.createElement('div');
+      const isLight = (r+c)%2===0;
+      td.className = 'cell ' + (isLight?'light':'dark');
+
+      // Highlights
+      if (selected?.level===level && selected.row===r && selected.col===c) {
+        td.className += ' selected';
+      } else {
+        const lm = legalMoves.find(m=>m.level===level&&m.row===r&&m.col===c);
+        if (lm) td.className += ' legal-move';
+      }
+
+      // Transfer square indicator
+      if (isTransfer(r,c)) {
+        const ind = document.createElement('div');
+        ind.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(165,180,252,0.7);pointer-events:none;';
+        ind.textContent = '↕';
+        td.appendChild(ind);
+      }
+
+      // Piece
+      const piece = boards[level][r][c];
+      if (piece) {
+        const pw = document.createElement('div');
+        pw.className = 'piece-wrap';
+        pw.textContent = GLYPHS[`${piece.color}${piece.type}`];
+        // Check flash
+        if (piece.type===KING && piece.color===sideToMove && inCheckOnLevel) {
+          td.className += ' check-flash';
+        }
+        td.appendChild(pw);
+      }
+
+      // Coordinate label
+      const coord = document.createElement('div');
+      coord.className = 'coord';
+      coord.textContent = 'abcdefgh'[c] + (8-r);
+      td.appendChild(coord);
+
+      td.addEventListener('click', () => cellClick(level, r, c));
+      row.appendChild(td);
+    }
+    container.appendChild(row);
+  }
+}
+
+function hasKingOnLevel(color, level) {
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p=boards[level][r][c];
+    if(p?.type===KING&&p.color===color) return true;
+  }
+  return false;
+}
+
+function updateStatus(msg) {
+  const el = document.getElementById('statusEl');
+  if (msg) {
+    el.textContent = msg;
+  } else {
+    const name = sideToMove===W?'White':'Black';
+    el.textContent = `${name}'s turn — click a piece to select, then click destination`;
+  }
+}
+
+async function goBack() {
+  try {
+    const api=window.spaceAPI;
+    if(api?.tabs){const tabs=await api.tabs.list();const active=tabs.find(t=>t.isActive);if(active){api.tabs.navigate(active.id,'space://games');return;}}
+  }catch(_){}
+  try { window.history.back(); } catch(_){}
+}
+
+// ── AI Engine (minimax + alpha-beta, depth 3) ──────────────────────────────────
+const PIECE_VALUE = { [PAWN]:100, [KNIGHT]:320, [BISHOP]:330, [ROOK]:500, [QUEEN]:900, [KING]:20000 };
+
+// Piece-square tables for the main board (white perspective, row 7 = white back rank)
+const PST = {
+  [PAWN]: [
+    [0,0,0,0,0,0,0,0],
+    [50,50,50,50,50,50,50,50],
+    [10,10,20,30,30,20,10,10],
+    [5,5,10,25,25,10,5,5],
+    [0,0,0,20,20,0,0,0],
+    [5,-5,-10,0,0,-10,-5,5],
+    [5,10,10,-20,-20,10,10,5],
+    [0,0,0,0,0,0,0,0]
+  ],
+  [KNIGHT]: [
+    [-50,-40,-30,-30,-30,-30,-40,-50],
+    [-40,-20,0,0,0,0,-20,-40],
+    [-30,0,10,15,15,10,0,-30],
+    [-30,5,15,20,20,15,5,-30],
+    [-30,0,15,20,20,15,0,-30],
+    [-30,5,10,15,15,10,5,-30],
+    [-40,-20,0,5,5,0,-20,-40],
+    [-50,-40,-30,-30,-30,-30,-40,-50]
+  ],
+  [BISHOP]: [
+    [-20,-10,-10,-10,-10,-10,-10,-20],
+    [-10,0,0,0,0,0,0,-10],
+    [-10,0,5,10,10,5,0,-10],
+    [-10,5,5,10,10,5,5,-10],
+    [-10,0,10,10,10,10,0,-10],
+    [-10,10,10,10,10,10,10,-10],
+    [-10,5,0,0,0,0,5,-10],
+    [-20,-10,-10,-10,-10,-10,-10,-20]
+  ],
+  [ROOK]: [
+    [0,0,0,0,0,0,0,0],
+    [5,10,10,10,10,10,10,5],
+    [-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],
+    [0,0,0,5,5,0,0,0]
+  ],
+  [QUEEN]: [
+    [-20,-10,-10,-5,-5,-10,-10,-20],
+    [-10,0,0,0,0,0,0,-10],
+    [-10,0,5,5,5,5,0,-10],
+    [-5,0,5,5,5,5,0,-5],
+    [0,0,5,5,5,5,0,-5],
+    [-10,5,5,5,5,5,0,-10],
+    [-10,0,5,0,0,0,0,-10],
+    [-20,-10,-10,-5,-5,-10,-10,-20]
+  ],
+  [KING]: [
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-20,-30,-30,-40,-40,-30,-30,-20],
+    [-10,-20,-20,-20,-20,-20,-20,-10],
+    [20,20,0,0,0,0,20,20],
+    [20,30,10,0,0,10,30,20]
+  ],
+};
+
+function getPSTValue(type, color, row, col) {
+  const table = PST[type];
+  if (!table) return 0;
+  // White: row 7 = back rank (index 7 in table = bonus for back)
+  // Black: mirror vertically
+  const r = color === W ? row : 7 - row;
+  return (table[r] && table[r][col]) || 0;
+}
+
+function evaluateBoard(bs) {
+  let score = 0;
+  for (let l = 0; l <= 2; l++) {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = bs[l][r][c];
+        if (!p) continue;
+        const val = PIECE_VALUE[p.type] + (l === 1 ? getPSTValue(p.type, p.color, r, c) : 0);
+        score += p.color === B ? val : -val;
+      }
+    }
+  }
+  return score;
+}
+
+function getAllMovesForColor(color, bs, castl, ep) {
+  const moves = [];
+  for (let l = 0; l <= 2; l++) {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (bs[l][r][c]?.color !== color) continue;
+        const pseudo = getPseudoMoves(l, r, c, bs, castl, ep);
+        for (const to of pseudo) {
+          const [nb] = applyMoveToBoards(deepCloneBoards(bs), { from:{level:l,row:r,col:c}, to }, castl);
+          if (!isInCheck(color, nb)) {
+            moves.push({ from:{level:l,row:r,col:c}, to });
+          }
+        }
+      }
+    }
+  }
+  return moves;
+}
+
+function minimax(bs, castl, ep, depth, alpha, beta, maximizing) {
+  const color = maximizing ? B : W;
+  if (depth === 0) return evaluateBoard(bs);
+
+  const moves = getAllMovesForColor(color, bs, castl, ep);
+  if (moves.length === 0) {
+    if (isInCheck(color, bs)) return maximizing ? -99999 : 99999;
+    return 0; // stalemate
+  }
+
+  if (maximizing) {
+    let best = -Infinity;
+    for (const m of moves) {
+      const [nb, nc] = applyMoveToBoards(deepCloneBoards(bs), m, castl);
+      // En passant tracking
+      let nep = null;
+      const p = bs[m.from.level][m.from.row][m.from.col];
+      if (p?.type === PAWN && Math.abs(m.to.row - m.from.row) === 2) {
+        nep = { level: m.from.level, row: (m.from.row + m.to.row) / 2, col: m.from.col };
+      }
+      const val = minimax(nb, nc, nep, depth - 1, alpha, beta, false);
+      if (val > best) best = val;
+      alpha = Math.max(alpha, val);
+      if (beta <= alpha) break;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (const m of moves) {
+      const [nb, nc] = applyMoveToBoards(deepCloneBoards(bs), m, castl);
+      let nep = null;
+      const p = bs[m.from.level][m.from.row][m.from.col];
+      if (p?.type === PAWN && Math.abs(m.to.row - m.from.row) === 2) {
+        nep = { level: m.from.level, row: (m.from.row + m.to.row) / 2, col: m.from.col };
+      }
+      const val = minimax(nb, nc, nep, depth - 1, alpha, beta, true);
+      if (val < best) best = val;
+      beta = Math.min(beta, val);
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
+}
+
+function scheduleAI() {
+  if (!aiEnabled || sideToMove !== B || gameOver || aiThinking) return;
+  aiThinking = true;
+  updateStatus('🤖 AI is thinking…');
+
+  // Use setTimeout to yield to the UI before running the search
+  setTimeout(() => {
+    try {
+      const moves = getAllMovesForColor(B, boards, castling, enPassantSq);
+      if (moves.length === 0) { aiThinking = false; return; }
+
+      // Depth 3 — balanced between speed and strength
+      const AI_DEPTH = 3;
+      let bestMove = null, bestVal = -Infinity;
+      for (const m of moves) {
+        const [nb, nc] = applyMoveToBoards(deepCloneBoards(boards), m, castling);
+        let nep = null;
+        const p = boards[m.from.level][m.from.row][m.from.col];
+        if (p?.type === PAWN && Math.abs(m.to.row - m.from.row) === 2) {
+          nep = { level: m.from.level, row: (m.from.row + m.to.row) / 2, col: m.from.col };
+        }
+        const val = minimax(nb, nc, nep, AI_DEPTH - 1, -Infinity, Infinity, false);
+        if (val > bestVal) { bestVal = val; bestMove = m; }
+      }
+      if (bestMove) executeMove(bestMove.from, bestMove.to);
+    } catch (e) {
+      console.error('AI error', e);
+    } finally {
+      aiThinking = false;
+    }
+  }, 60); // short delay so UI can repaint "AI thinking…"
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+newGame();
+</script>
+</body>
+</html>

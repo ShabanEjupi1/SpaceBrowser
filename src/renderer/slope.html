@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Slope – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html, body {
+      background:#000; width:100%; height:100%;
+      font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    body { display:flex; flex-direction:column; }
+    .header {
+      width:100%; display:flex; align-items:center; gap:12px;
+      padding:10px 20px; background:rgba(0,5,18,0.97);
+      border-bottom:1px solid rgba(34,211,238,0.12); flex-shrink:0; z-index:10; height:48px;
+    }
+    .back-btn {
+      background:#060e1e; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:6px 13px;
+      cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:6px;
+    }
+    .back-btn:hover { color:#e8e8f0; border-color:rgba(34,211,238,0.5); }
+    .info-row { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:13px; }
+    .badge {
+      background:#060e1e; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; padding:5px 14px; font-weight:700; white-space:nowrap;
+    }
+    .badge.neon { border-color:rgba(34,211,238,0.5); color:#22d3ee; }
+    canvas { display:block; flex:1; width:100%; }
+
+    #overlay {
+      position:fixed; inset:0; top:48px;
+      background:rgba(0,2,10,0.95);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:20px; z-index:20; backdrop-filter:blur(8px);
+    }
+    #overlay h2 {
+      font-size:56px; font-weight:900; color:#22d3ee;
+      text-shadow:0 0 50px rgba(34,211,238,0.9), 0 0 100px rgba(34,211,238,0.4);
+      letter-spacing:0.12em;
+    }
+    .sub { font-size:14px; color:#6b8caa; text-align:center; line-height:2.1; max-width:400px; }
+    .score-display {
+      font-size:52px; font-weight:900; color:#f0f;
+      text-shadow:0 0 30px rgba(255,0,255,0.8);
+    }
+    .best-label { font-size:14px; color:#6b8caa; }
+    .best-new   { font-size:14px; color:#fbbf24; font-weight:700; }
+    .play-btn {
+      background:linear-gradient(135deg,#0891b2,#22d3ee); border:none;
+      border-radius:12px; color:#000; font-size:18px; font-weight:900;
+      padding:14px 56px; cursor:pointer; transition:all 0.15s;
+      box-shadow:0 0 35px rgba(34,211,238,0.6);
+      letter-spacing:0.06em;
+    }
+    .play-btn:hover { transform:scale(1.07); box-shadow:0 0 60px rgba(34,211,238,0.9); }
+    .palette-row { display:flex; gap:14px; }
+    .pal-btn {
+      width:40px; height:40px; border-radius:50%;
+      border:2px solid rgba(255,255,255,0.15);
+      cursor:pointer; transition:transform 0.12s, border-color 0.12s;
+    }
+    .pal-btn:hover, .pal-btn.active { transform:scale(1.25); border-color:#fff; }
+    .hint-row { font-size:12px; color:#334455; text-align:center; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:15px;font-weight:700;letter-spacing:0.06em;">&#x1F535; SLOPE</span>
+  <div class="info-row">
+    <div class="badge neon" id="scoreBadge">Score: 0</div>
+    <div class="badge" id="bestBadge">Best: 0</div>
+    <div class="badge" id="levelBadge">Level 1</div>
+    <div class="badge" id="speedBadge">Speed: 1.0x</div>
+  </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="overlay">
+  <h2>SLOPE</h2>
+  <div class="sub">
+    Roll the ball down the endless neon slope.<br>
+    <strong style="color:#22d3ee">Arrow Keys</strong> or <strong style="color:#22d3ee">A / D</strong> to steer.<br>
+    Dodge the <strong style="color:#ef4444">red blocks</strong> — don't fall off the edge!
+  </div>
+  <div class="palette-row">
+    <div class="pal-btn active" data-pal="0" style="background:linear-gradient(135deg,#22d3ee,#6366f1)" onclick="setPalette(0)" title="Cyber"></div>
+    <div class="pal-btn" data-pal="1" style="background:linear-gradient(135deg,#f0f,#f97316)" onclick="setPalette(1)" title="Magenta"></div>
+    <div class="pal-btn" data-pal="2" style="background:linear-gradient(135deg,#4ade80,#22d3ee)" onclick="setPalette(2)" title="Matrix"></div>
+    <div class="pal-btn" data-pal="3" style="background:linear-gradient(135deg,#fbbf24,#ef4444)" onclick="setPalette(3)" title="Gold"></div>
+  </div>
+  <button class="play-btn" onclick="startGame()">&#9654; PLAY</button>
+  <div id="bestDisplay" class="best-label">Best: 0</div>
+  <div class="hint-row">Arrow Keys or A/D to steer &nbsp;·&nbsp; Space to start</div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SlopeConfig – all tuneable constants, palettes, and level milestones
+// ═══════════════════════════════════════════════════════════════════════════════
+class SlopeConfig {
+  static TRACK_W    = 3;        // world-unit track width (ball X ∈ [-1.5, 1.5])
+  static LANE_W     = SlopeConfig.TRACK_W / 3;
+  static VIEW_SEGS  = 40;       // segments rendered ahead of camera
+  static SEG_LEN    = 1.2;      // world-Z length of one segment
+  static CAM_HEIGHT = 1.8;      // camera Y above track
+  static CAM_BEHIND = 3.5;      // camera lag behind ball in Z
+  static FOCAL      = 1.5;      // perspective focal length (controls FOV)
+  static INIT_SPEED = 5;
+  static MAX_SPEED  = 28;
+  static BEST_KEY   = 'slopeBestV5';
+
+  /** @type {Array<{bg0,bg1,ball,edge1,edge2,tileDark,tileMid,block,blockTop,glow}>} */
+  static PALETTES = [
+    { ball:'#22d3ee', edge1:'#818cf8', edge2:'#6366f1', tileDark:'rgba(18,18,55,1)',  tileMid:'rgba(24,24,70,1)',  block:'#ef4444', blockTop:'#fca5a5', bg0:'#00000f', bg1:'#000820', glow:'99,102,241'  },
+    { ball:'#ff00ff', edge1:'#fb923c', edge2:'#f97316', tileDark:'rgba(30,8,30,1)',   tileMid:'rgba(42,10,42,1)',  block:'#ef4444', blockTop:'#fca5a5', bg0:'#0a0010', bg1:'#150020', glow:'249,115,22'  },
+    { ball:'#4ade80', edge1:'#22c55e', edge2:'#16a34a', tileDark:'rgba(4,18,4,1)',    tileMid:'rgba(6,26,6,1)',    block:'#dc2626', blockTop:'#f87171', bg0:'#000a00', bg1:'#001500', glow:'74,222,128'  },
+    { ball:'#fbbf24', edge1:'#f59e0b', edge2:'#d97706', tileDark:'rgba(22,15,0,1)',   tileMid:'rgba(32,22,0,1)',   block:'#ef4444', blockTop:'#fca5a5', bg0:'#0a0800', bg1:'#150e00', glow:'251,191,36'  },
+  ];
+
+  /** @type {Array<{score,name,blockChanceBase,maxBlock,hasNarrow,hasDual}>} */
+  static LEVELS = [
+    { score:0,    name:'Level 1', blockChanceBase:0.10, maxBlock:0.30, hasNarrow:false, hasDual:false },
+    { score:200,  name:'Level 2', blockChanceBase:0.14, maxBlock:0.36, hasNarrow:false, hasDual:false },
+    { score:500,  name:'Level 3', blockChanceBase:0.18, maxBlock:0.42, hasNarrow:true,  hasDual:false },
+    { score:900,  name:'Level 4', blockChanceBase:0.22, maxBlock:0.47, hasNarrow:true,  hasDual:false },
+    { score:1400, name:'Level 5', blockChanceBase:0.26, maxBlock:0.52, hasNarrow:true,  hasDual:true  },
+    { score:2100, name:'Level 6', blockChanceBase:0.30, maxBlock:0.57, hasNarrow:true,  hasDual:true  },
+    { score:3000, name:'Level 7', blockChanceBase:0.34, maxBlock:0.63, hasNarrow:true,  hasDual:true  },
+    { score:4200, name:'Elite',   blockChanceBase:0.38, maxBlock:0.70, hasNarrow:true,  hasDual:true  },
+    { score:6000, name:'Master',  blockChanceBase:0.42, maxBlock:0.76, hasNarrow:true,  hasDual:true  },
+    { score:9000, name:'APEX',    blockChanceBase:0.46, maxBlock:0.82, hasNarrow:true,  hasDual:true  },
+  ];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// InputManager – keyboard + touch input abstraction
+// ═══════════════════════════════════════════════════════════════════════════════
+class InputManager {
+  constructor() {
+    /** @type {Record<string,boolean>} */
+    this._keys = {};
+    this._touchX0 = null;
+    this._onStart = null; // callback: () => void, fired on first touch/space when not playing
+
+    document.addEventListener('keydown', e => {
+      this._keys[e.code] = true;
+      if (['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','ArrowDown'].includes(e.code))
+        e.preventDefault();
+      if (e.code === 'Space') this._onStart?.();
+    });
+    document.addEventListener('keyup', e => { this._keys[e.code] = false; });
+  }
+
+  /**
+   * Attach touch listeners to a canvas element.
+   * @param {HTMLCanvasElement} canvas
+   */
+  attachTouch(canvas) {
+    canvas.addEventListener('touchstart', e => {
+      this._touchX0 = e.touches[0].clientX;
+      this._onStart?.();
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      if (this._touchX0 !== null) {
+        const d = e.touches[0].clientX - this._touchX0;
+        this._keys['ArrowLeft']  = d < -18;
+        this._keys['ArrowRight'] = d >  18;
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+      this._keys['ArrowLeft'] = this._keys['ArrowRight'] = false;
+      this._touchX0 = null;
+    });
+  }
+
+  /** @param {(()=>void)|null} cb */
+  set onStart(cb) { this._onStart = cb; }
+
+  /** @param {string} code */
+  isDown(code) { return !!this._keys[code]; }
+
+  /** True when left steer key (← or A) is held. */
+  get left()  { return this.isDown('ArrowLeft')  || this.isDown('KeyA'); }
+  /** True when right steer key (→ or D) is held. */
+  get right() { return this.isDown('ArrowRight') || this.isDown('KeyD'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ScreenShake – trauma-based camera shake (trauma² magnitude model)
+// ═══════════════════════════════════════════════════════════════════════════════
+class ScreenShake {
+  constructor() {
+    this._trauma = 0; // [0,1]
+  }
+
+  /**
+   * Add trauma energy (clamped to 1).
+   * @param {number} amount
+   */
+  add(amount) { this._trauma = Math.min(1, this._trauma + amount); }
+
+  /**
+   * Advance one frame (decays trauma).
+   * @returns {{dx:number, dy:number}} pixel offset to apply via ctx.translate
+   */
+  update() {
+    if (this._trauma <= 0) return { dx: 0, dy: 0 };
+    const mag = this._trauma * this._trauma * 12;
+    const dx = (Math.random() * 2 - 1) * mag;
+    const dy = (Math.random() * 2 - 1) * mag;
+    this._trauma = Math.max(0, this._trauma - 0.05);
+    return { dx, dy };
+  }
+
+  get active() { return this._trauma > 0.01; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ScoreManager – score, best, level, speed tracking + session history
+// ═══════════════════════════════════════════════════════════════════════════════
+class ScoreManager {
+  constructor() {
+    this.score = 0;
+    this.level = 0;
+    this.speed = SlopeConfig.INIT_SPEED;
+    this._isNewBest = false;
+    /** @type {number} */
+    this.best = 0;
+    try { this.best = parseInt(localStorage.getItem(SlopeConfig.BEST_KEY) || '0'); } catch (_) {}
+  }
+
+  /** Reset score/level/speed for a new run. */
+  reset() {
+    this.score = 0;
+    this.level = 0;
+    this.speed = SlopeConfig.INIT_SPEED;
+    this._isNewBest = false;
+  }
+
+  /**
+   * Called each frame to advance score from distance traveled.
+   * @param {number} dist - ballDist value
+   */
+  updateFromDist(dist) {
+    this.score = Math.floor(dist * 1.5);
+  }
+
+  /**
+   * Recalculate current level from score thresholds.
+   * @returns {number} new level index
+   */
+  recalcLevel() {
+    let lvl = 0;
+    const L = SlopeConfig.LEVELS;
+    for (let i = L.length - 1; i >= 0; i--) {
+      if (this.score >= L[i].score) { lvl = i; break; }
+    }
+    this.level = lvl;
+    return lvl;
+  }
+
+  /**
+   * Save score if it beats the best; set isNewBest flag.
+   * @returns {boolean} whether a new best was achieved
+   */
+  saveIfBest() {
+    if (this.score > this.best) {
+      this.best = this.score;
+      this._isNewBest = true;
+      try { localStorage.setItem(SlopeConfig.BEST_KEY, String(this.best)); } catch (_) {}
+      return true;
+    }
+    return false;
+  }
+
+  /** Whether the most recent run set a new personal best. */
+  get isNewBest() { return this._isNewBest; }
+
+  /** Current level data object. */
+  get currentLevelData() {
+    const L = SlopeConfig.LEVELS;
+    return L[this.level] ?? L[L.length - 1];
+  }
+
+  /** Speed multiplier string e.g. "2.3x". */
+  get speedLabel() { return (this.speed / SlopeConfig.INIT_SPEED).toFixed(1) + 'x'; }
+
+  /**
+   * Persist a session record to localStorage for history.
+   * @param {boolean} isNewBest
+   */
+  saveSession(isNewBest) {
+    try {
+      const key = 'slope_sessions';
+      const sessions = JSON.parse(localStorage.getItem(key) || '[]');
+      sessions.unshift({ score: this.score, best: this.best, isNewBest, date: new Date().toISOString() });
+      localStorage.setItem(key, JSON.stringify(sessions.slice(0, 20)));
+    } catch (_) {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BallTrail – motion-blur ghost trail for the ball
+// ═══════════════════════════════════════════════════════════════════════════════
+class BallTrail {
+  constructor(maxLen = 10) {
+    /** @type {Array<{x:number,y:number}>} */
+    this._history = [];
+    this._maxLen = maxLen;
+  }
+
+  /**
+   * Push a new ball screen-position sample.
+   * @param {number} x  screen X
+   * @param {number} y  screen Y
+   */
+  push(x, y) {
+    this._history.unshift({ x, y });
+    if (this._history.length > this._maxLen) this._history.pop();
+  }
+
+  /** Clear the history on death/reset. */
+  reset() { this._history = []; }
+
+  /**
+   * Draw fading ghost circles behind the ball.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} radius  ball radius in pixels
+   * @param {string} color   ball fill colour
+   */
+  draw(ctx, radius, color) {
+    const n = this._history.length;
+    if (n < 2) return;
+    for (let i = 1; i < n; i++) {
+      const t = 1 - i / n;
+      ctx.save();
+      ctx.globalAlpha = t * 0.22;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(this._history[i].x, this._history[i].y, radius * 0.75 * t, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TrackSegment – plain data container for one track slice
+// ═══════════════════════════════════════════════════════════════════════════════
+class TrackSegment {
+  /**
+   * @param {number} z           world Z of segment's far edge
+   * @param {boolean} hasBlock
+   * @param {number} blockLane   0-2, or -1 if none
+   * @param {number} blockLane2  0-2, or -1 if no dual block
+   * @param {number} narrowFactor  1.0 = full width, < 1.0 = narrow
+   */
+  constructor(z, hasBlock, blockLane, blockLane2, narrowFactor) {
+    this.z = z;
+    this.hasBlock = hasBlock;
+    this.blockLane = blockLane;
+    this.blockLane2 = blockLane2;
+    this.narrowFactor = narrowFactor;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TrackGenerator – creates and scrolls TrackSegment instances
+// ═══════════════════════════════════════════════════════════════════════════════
+class TrackGenerator {
+  constructor(scoreManager) {
+    /** @type {TrackSegment[]} */
+    this.segments = [];
+    this._prevLane = -1;
+    this._frame = 0;
+    this._sm = scoreManager;
+  }
+
+  /** Reset and seed fresh segments starting at distance 0. */
+  init(ballDist) {
+    this.segments = [];
+    this._prevLane = -1;
+    for (let i = 0; i < SlopeConfig.VIEW_SEGS + 5; i++) {
+      const s = this._makeSeg(i);
+      s.z = ballDist + i * SlopeConfig.SEG_LEN;
+      this.segments.push(s);
+    }
+  }
+
+  /**
+   * Scroll segments based on the ball's current distance.
+   * Removes passed segments and appends new ones.
+   * @param {number} ballDist
+   */
+  scroll(ballDist) {
+    this._frame++;
+    while (this.segments.length > 0 && this.segments[0].z + SlopeConfig.SEG_LEN < ballDist) {
+      this.segments.shift();
+      const last = this.segments[this.segments.length - 1];
+      const ns = this._makeSeg(this._frame);
+      ns.z = (last ? last.z : ballDist) + SlopeConfig.SEG_LEN;
+      this.segments.push(ns);
+    }
+  }
+
+  /**
+   * Build one segment using the current level's parameters.
+   * @param {number} idx  segment sequence index (used for initial safe zone)
+   * @returns {TrackSegment}
+   */
+  _makeSeg(idx) {
+    const lvl = this._sm.currentLevelData;
+    const blockChance = Math.min(
+      lvl.maxBlock,
+      lvl.blockChanceBase + Math.max(0, this._sm.speed - SlopeConfig.INIT_SPEED) * 0.010
+    );
+
+    let hasBlock   = idx > 8 && Math.random() < blockChance;
+    let blockLane  = -1;
+    let blockLane2 = -1;
+
+    if (hasBlock) {
+      do {
+        blockLane = Math.floor(Math.random() * 3);
+      } while (blockLane === this._prevLane && Math.random() < 0.7);
+      this._prevLane = blockLane;
+
+      if (lvl.hasDual && Math.random() < 0.22) {
+        do { blockLane2 = Math.floor(Math.random() * 3); } while (blockLane2 === blockLane);
+      }
+    } else {
+      this._prevLane = -1;
+    }
+
+    const narrowFactor = lvl.hasNarrow
+      ? 1.0 - Math.min(0.25, this._sm.score / 20000)
+      : 1.0;
+
+    return new TrackSegment(0, hasBlock, blockLane, blockLane2, narrowFactor);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BallPhysics – lateral position, velocity, and boundary detection
+// ═══════════════════════════════════════════════════════════════════════════════
+class BallPhysics {
+  constructor() {
+    this.x = 0;   // world X ∈ [-TRACK_W/2, TRACK_W/2]
+    this.vx = 0;  // lateral velocity
+  }
+
+  /** Reset position and velocity for a new run. */
+  reset() { this.x = 0; this.vx = 0; }
+
+  /**
+   * Apply steering forces and advance physics one frame.
+   * @param {boolean} leftHeld
+   * @param {boolean} rightHeld
+   * @param {number}  speed  current forward speed
+   * @param {number}  dt     delta time in seconds
+   */
+  update(leftHeld, rightHeld, speed, dt) {
+    const steer = 0.22 * speed * dt;
+    if (leftHeld)  this.vx -= steer;
+    if (rightHeld) this.vx += steer;
+
+    // Friction (frame-rate independent)
+    this.vx *= Math.pow(0.75, dt * 60);
+
+    // Clamp lateral speed
+    const maxVX = 0.15 * speed;
+    this.vx = Math.max(-maxVX, Math.min(maxVX, this.vx));
+
+    this.x += this.vx;
+  }
+
+  /**
+   * Check whether the ball has fallen off the edge.
+   * @returns {boolean}
+   */
+  isOffEdge() {
+    return this.x < -(SlopeConfig.TRACK_W / 2) || this.x > (SlopeConfig.TRACK_W / 2);
+  }
+
+  /**
+   * Compute which of the 3 lanes the ball currently occupies.
+   * @returns {number} 0 | 1 | 2
+   */
+  get lane() {
+    const raw = Math.floor((this.x + SlopeConfig.TRACK_W / 2) / SlopeConfig.LANE_W);
+    return Math.max(0, Math.min(2, raw));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SlopeRenderer – all canvas drawing: sky, track, ball, HUD, overlays
+// ═══════════════════════════════════════════════════════════════════════════════
+class SlopeRenderer {
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @param {BallTrail} trail
+   */
+  constructor(canvas, trail) {
+    this._canvas = canvas;
+    this._ctx = canvas.getContext('2d');
+    this._trail = trail;
+    /** @type {ReturnType<typeof SlopeConfig.PALETTES[0]>} */
+    this._p = SlopeConfig.PALETTES[0];
+  }
+
+  /** @param {number} idx palette index 0-3 */
+  setPalette(idx) { this._p = SlopeConfig.PALETTES[idx]; }
+
+  /**
+   * Project a world-Z position to screen coordinates.
+   * @param {number} wz    world Z of segment's far edge
+   * @param {number} ballDist  ball's current world-Z distance
+   * @param {number} ballX     ball's world X for lateral perspective shift
+   * @returns {{sy:number, scale:number, halfW:number, cx:number, relZ:number}}
+   */
+  _project(wz, ballDist, ballX) {
+    const CW = this._canvas.width, CH = this._canvas.height;
+    let relZ = wz - ballDist + SlopeConfig.CAM_BEHIND;
+    if (relZ < 0.05) relZ = 0.05;
+    const horizon = CH * 0.26;
+    const scale   = SlopeConfig.FOCAL * CH / relZ;
+    const sy      = horizon + (SlopeConfig.CAM_HEIGHT / relZ) * SlopeConfig.FOCAL * CH * 0.55;
+    const halfW   = (SlopeConfig.TRACK_W / 2) * scale;
+    const cx      = CW / 2 + (-ballX) * scale;
+    return { sy, scale, halfW, cx, relZ };
+  }
+
+  /**
+   * Draw the full scene for one frame.
+   * @param {TrackSegment[]} segments
+   * @param {number}  ballDist
+   * @param {number}  ballX
+   * @param {number}  ballSpeed
+   * @param {number}  deathFlash  frames remaining for red flash (0 = none)
+   */
+  draw(segments, ballDist, ballX, ballSpeed, deathFlash) {
+    const ctx = this._ctx;
+    const CW = this._canvas.width, CH = this._canvas.height;
+    const P = this._p;
+
+    ctx.clearRect(0, 0, CW, CH);
+
+    const horizon = CH * 0.26;
+
+    // ── Sky gradient ────────────────────────────────────────────────────────
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon + 40);
+    sky.addColorStop(0, P.bg0); sky.addColorStop(1, P.bg1);
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, CW, horizon + 40);
+
+    // ── Horizon glow ────────────────────────────────────────────────────────
+    const hglow = ctx.createRadialGradient(CW/2, horizon, 0, CW/2, horizon, CW * 0.42);
+    hglow.addColorStop(0,   `rgba(${P.glow},0.38)`);
+    hglow.addColorStop(0.6, `rgba(${P.glow},0.06)`);
+    hglow.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = hglow;
+    ctx.fillRect(0, 0, CW, horizon + 80);
+
+    // ── Track segments (back → front) ───────────────────────────────────────
+    for (let i = segments.length - 1; i >= 0; i--) {
+      this._drawSegment(segments[i], ballDist, ballX, CW, CH, horizon, P, i);
+    }
+
+    // ── Ground fade ─────────────────────────────────────────────────────────
+    const fade = ctx.createLinearGradient(0, CH * 0.78, 0, CH);
+    fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, P.bg0);
+    ctx.fillStyle = fade; ctx.fillRect(0, CH * 0.78, CW, CH * 0.22);
+
+    // ── Ball trail ──────────────────────────────────────────────────────────
+    const br = this._ballRadius();
+    const bsx = CW / 2, bsy = CH * 0.735;
+    this._trail.draw(ctx, br, P.ball);
+
+    // ── Ball ────────────────────────────────────────────────────────────────
+    this._drawBall(bsx, bsy, br, P);
+
+    // ── Speed streaks ───────────────────────────────────────────────────────
+    const speedPct = (ballSpeed - SlopeConfig.INIT_SPEED) / (SlopeConfig.MAX_SPEED - SlopeConfig.INIT_SPEED);
+    if (speedPct > 0.3) {
+      const sAlpha = (speedPct - 0.3) * 0.55;
+      ctx.save();
+      ctx.globalAlpha = sAlpha;
+      ctx.strokeStyle = P.ball; ctx.lineWidth = 2; ctx.setLineDash([10, 16]);
+      for (let si = 0; si < 5; si++) {
+        const off = (si - 2) * 30;
+        ctx.beginPath(); ctx.moveTo(bsx + off - 14, bsy - 5); ctx.lineTo(bsx + off + 8, bsy - 5); ctx.stroke();
+      }
+      ctx.setLineDash([]); ctx.restore();
+    }
+
+    // ── Death flash ─────────────────────────────────────────────────────────
+    if (deathFlash > 0) {
+      ctx.fillStyle = `rgba(239,68,68,${deathFlash / 22})`;
+      ctx.fillRect(0, 0, CW, CH);
+    }
+  }
+
+  /**
+   * Draw one track segment including tile, lane lines, edge neons, and blocks.
+   * @private
+   */
+  _drawSegment(seg, ballDist, ballX, CW, CH, horizon, P, idx) {
+    const ctx = this._ctx;
+    const p0 = this._project(seg.z,             ballDist, ballX); // far edge
+    const p1 = this._project(seg.z + SlopeConfig.SEG_LEN, ballDist, ballX); // near edge
+
+    if (p1.sy < horizon - 2) return; // above horizon
+    if (p0.sy > CH * 1.1)   return; // below screen
+
+    const lx0 = CW/2 + (-SlopeConfig.TRACK_W/2 - ballX) * p0.scale;
+    const rx0 = CW/2 + ( SlopeConfig.TRACK_W/2 - ballX) * p0.scale;
+    const lx1 = CW/2 + (-SlopeConfig.TRACK_W/2 - ballX) * p1.scale;
+    const rx1 = CW/2 + ( SlopeConfig.TRACK_W/2 - ballX) * p1.scale;
+
+    const bright = Math.max(0.1, Math.min(1, p1.halfW / (CW * 0.5)));
+
+    ctx.save();
+
+    // Track tile fill
+    ctx.beginPath();
+    ctx.moveTo(lx0, p0.sy); ctx.lineTo(rx0, p0.sy);
+    ctx.lineTo(rx1, p1.sy); ctx.lineTo(lx1, p1.sy);
+    ctx.closePath();
+    ctx.fillStyle = (idx % 2 === 0) ? P.tileDark : P.tileMid;
+    ctx.fill();
+
+    // Dashed lane dividers
+    ctx.setLineDash([Math.max(2, 8 * p0.scale / 10), Math.max(3, 12 * p0.scale / 10)]);
+    for (let l = 1; l < 3; l++) {
+      const lf   = l / 3;
+      const lnx0 = CW/2 + (-SlopeConfig.TRACK_W/2 + SlopeConfig.TRACK_W * lf - ballX) * p0.scale;
+      const lnx1 = CW/2 + (-SlopeConfig.TRACK_W/2 + SlopeConfig.TRACK_W * lf - ballX) * p1.scale;
+      ctx.strokeStyle = `rgba(${P.glow},${(bright * 0.32).toFixed(3)})`;
+      ctx.lineWidth   = Math.max(1, 1.8 * p1.scale / 12);
+      ctx.beginPath(); ctx.moveTo(lnx0, p0.sy); ctx.lineTo(lnx1, p1.sy); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Neon edge lines
+    ctx.shadowColor = P.edge1; ctx.shadowBlur = 10;
+    ctx.strokeStyle = P.edge1;
+    ctx.lineWidth   = Math.max(1.2, 3 * bright);
+    ctx.globalAlpha = Math.min(1, bright * 1.2);
+    ctx.beginPath(); ctx.moveTo(lx0, p0.sy); ctx.lineTo(lx1, p1.sy); ctx.stroke();
+    ctx.strokeStyle = P.edge2; ctx.shadowColor = P.edge2;
+    ctx.beginPath(); ctx.moveTo(rx0, p0.sy); ctx.lineTo(rx1, p1.sy); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+
+    // Obstacle blocks
+    if (seg.hasBlock && p1.sy > horizon) {
+      const blockLanes = [seg.blockLane];
+      if (seg.blockLane2 >= 0) blockLanes.push(seg.blockLane2);
+      blockLanes.forEach(lIdx => this._drawBlock(ctx, lIdx, p0, p1, CW, ballX, P, bright));
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Draw a single obstacle block within a segment.
+   * @private
+   */
+  _drawBlock(ctx, lIdx, p0, p1, CW, ballX, P, bright) {
+    const LW = SlopeConfig.LANE_W;
+    const TW = SlopeConfig.TRACK_W;
+    const blkL0 = CW/2 + (-TW/2 + LW * lIdx     - ballX) * p0.scale;
+    const blkR0 = CW/2 + (-TW/2 + LW * (lIdx+1) - ballX) * p0.scale;
+    const blkL1 = CW/2 + (-TW/2 + LW * lIdx     - ballX) * p1.scale;
+    const blkR1 = CW/2 + (-TW/2 + LW * (lIdx+1) - ballX) * p1.scale;
+    const blkHgt0 = 0.85 * p0.scale;
+    const blkHgt1 = 0.85 * p1.scale;
+    const bAlpha  = Math.min(1, bright * 1.6);
+
+    ctx.save();
+    ctx.globalAlpha = bAlpha * 0.93;
+    ctx.shadowColor = P.block; ctx.shadowBlur = 18;
+
+    // Front face
+    ctx.fillStyle = P.block;
+    ctx.beginPath();
+    ctx.moveTo(blkL1, p1.sy - blkHgt1); ctx.lineTo(blkR1, p1.sy - blkHgt1);
+    ctx.lineTo(blkR1, p1.sy);           ctx.lineTo(blkL1, p1.sy);
+    ctx.closePath(); ctx.fill();
+
+    // Top face
+    ctx.fillStyle = P.blockTop; ctx.globalAlpha = bAlpha * 0.72;
+    ctx.beginPath();
+    ctx.moveTo(blkL1, p1.sy - blkHgt1); ctx.lineTo(blkR1, p1.sy - blkHgt1);
+    ctx.lineTo(blkR0, p0.sy - blkHgt0); ctx.lineTo(blkL0, p0.sy - blkHgt0);
+    ctx.closePath(); ctx.fill();
+
+    // Outline glow
+    ctx.strokeStyle = P.blockTop; ctx.lineWidth = 1.5; ctx.globalAlpha = bAlpha * 0.55;
+    ctx.beginPath();
+    ctx.moveTo(blkL1, p1.sy - blkHgt1); ctx.lineTo(blkR1, p1.sy - blkHgt1);
+    ctx.lineTo(blkR0, p0.sy - blkHgt0); ctx.lineTo(blkL0, p0.sy - blkHgt0);
+    ctx.closePath(); ctx.stroke();
+
+    ctx.shadowBlur = 0; ctx.restore();
+  }
+
+  /**
+   * Render the ball with radial gradient, glow, shadow, and specular.
+   * @private
+   */
+  _drawBall(bsx, bsy, br, P) {
+    const ctx = this._ctx;
+    ctx.save();
+
+    // Glow halo
+    const glow = ctx.createRadialGradient(bsx, bsy, 0, bsx, bsy, br * 5.5);
+    glow.addColorStop(0, `rgba(${P.glow},0.5)`);
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(bsx, bsy, br * 5.5, 0, Math.PI * 2); ctx.fill();
+
+    // Ground shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.ellipse(bsx, bsy + br * 1.1, br * 0.85, br * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Ball body
+    const bg = ctx.createRadialGradient(bsx - br*0.33, bsy - br*0.33, br*0.04, bsx, bsy, br);
+    bg.addColorStop(0, '#ffffff');
+    bg.addColorStop(0.22, P.ball);
+    bg.addColorStop(1, this._darken(P.ball, 68));
+    ctx.shadowColor = P.ball; ctx.shadowBlur = 36;
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(bsx, bsy, br, 0, Math.PI * 2); ctx.fill();
+
+    // Specular highlight
+    ctx.shadowBlur = 0; ctx.globalAlpha = 0.7; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(bsx - br*0.32, bsy - br*0.36, br*0.27, br*0.16, -0.55, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  /** Compute ball pixel radius from canvas width. */
+  _ballRadius() {
+    return Math.max(14, Math.min(26, this._canvas.width * 0.025));
+  }
+
+  /**
+   * Darken a hex colour by subtracting a flat amount from each channel.
+   * @param {string} hex  e.g. '#22d3ee'
+   * @param {number} amt  0-255
+   * @returns {string}
+   */
+  _darken(hex, amt) {
+    if (!hex || hex[0] !== '#') return hex;
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${Math.max(0,(n>>16)-amt)},${Math.max(0,((n>>8)&0xff)-amt)},${Math.max(0,(n&0xff)-amt)})`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HUDManager – synchronises the four badge elements in the header
+// ═══════════════════════════════════════════════════════════════════════════════
+class HUDManager {
+  constructor() {
+    this._score = document.getElementById('scoreBadge');
+    this._best  = document.getElementById('bestBadge');
+    this._level = document.getElementById('levelBadge');
+    this._speed = document.getElementById('speedBadge');
+    this._bestDisplay = document.getElementById('bestDisplay');
+  }
+
+  /**
+   * Refresh all HUD badges from the ScoreManager.
+   * @param {ScoreManager} sm
+   */
+  update(sm) {
+    this._score.textContent = 'Score: ' + sm.score;
+    this._best.textContent  = 'Best: '  + sm.best;
+    this._level.textContent = sm.currentLevelData.name;
+    this._speed.textContent = 'Speed: ' + sm.speedLabel;
+    if (this._bestDisplay) this._bestDisplay.textContent = 'Best: ' + sm.best;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SlopeGame – top-level game loop, state machine (idle → playing → dead)
+// ═══════════════════════════════════════════════════════════════════════════════
+class SlopeGame {
+  constructor() {
+    this._canvas  = document.getElementById('gameCanvas');
+    this._overlay = document.getElementById('overlay');
+    this._ctx     = this._canvas.getContext('2d');
+
+    // Subsystems
+    this._input    = new InputManager();
+    this._score    = new ScoreManager();
+    this._ball     = new BallPhysics();
+    this._trail    = new BallTrail(10);
+    this._shake    = new ScreenShake();
+    this._track    = new TrackGenerator(this._score);
+    this._renderer = new SlopeRenderer(this._canvas, this._trail);
+    this._hud      = new HUDManager();
+
+    /** @type {'idle'|'playing'|'dead'} */
+    this._state     = 'idle';
+    this._ballDist  = 0;
+    this._lastTS    = 0;
+    this._frame     = 0;
+    this._deathFlash = 0;
+    this._rafId     = 0;
+
+    // Resize canvas to fill window
+    this._resize();
+    window.addEventListener('resize', () => this._resize());
+
+    // Wire input → game start
+    this._input.onStart = () => { if (this._state !== 'playing') this.start(); };
+    this._input.attachTouch(this._canvas);
+
+    // Space key also triggers start (handled inside InputManager via onStart)
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' && this._state !== 'playing') this.start();
+    });
+
+    // Initial HUD
+    this._hud.update(this._score);
+  }
+
+  /** Resize canvas to fill the viewport below the 48px header. */
+  _resize() {
+    this._canvas.width  = window.innerWidth;
+    this._canvas.height = Math.max(300, window.innerHeight - 48);
+  }
+
+  /** Start or restart the game. */
+  start() {
+    this._overlay.style.display = 'none';
+    this._state    = 'playing';
+    this._ballDist = 0;
+    this._frame    = 0;
+    this._lastTS   = 0;
+    this._deathFlash = 0;
+
+    this._score.reset();
+    this._ball.reset();
+    this._trail.reset();
+    this._track.init(0);
+
+    cancelAnimationFrame(this._rafId);
+    this._rafId = requestAnimationFrame(ts => this._loop(ts));
+  }
+
+  /**
+   * Main animation frame callback.
+   * @param {number} ts  DOMHighResTimeStamp
+   */
+  _loop(ts) {
+    const dt = Math.min((ts - (this._lastTS || ts)) / 1000, 0.05);
+    this._lastTS = ts;
+    this._frame++;
+
+    if (this._state === 'playing') this._update(dt);
+    this._drawFrame();
+
+    if (this._state !== 'dead' || this._deathFlash > 0) {
+      this._rafId = requestAnimationFrame(ts2 => this._loop(ts2));
+    }
+  }
+
+  /**
+   * Physics + logic update; called only while playing.
+   * @param {number} dt  delta seconds
+   */
+  _update(dt) {
+    // Speed ramp
+    this._score.speed = Math.min(SlopeConfig.MAX_SPEED, this._score.speed + 0.7 * dt);
+
+    // Level update
+    this._score.recalcLevel();
+
+    // Ball steering + physics
+    this._ball.update(this._input.left, this._input.right, this._score.speed, dt);
+
+    // Advance ball distance and score
+    this._ballDist += this._score.speed * dt;
+    this._score.updateFromDist(this._ballDist);
+
+    // Scroll track
+    this._track.scroll(this._ballDist);
+
+    // Edge death
+    if (this._ball.isOffEdge()) { this._endGame(); return; }
+
+    // Block collision
+    if (this._checkBlockCollision()) { this._endGame(); return; }
+
+    // Update trail
+    const CW = this._canvas.width, CH = this._canvas.height;
+    this._trail.push(CW / 2, CH * 0.735);
+
+    // Refresh HUD every 4 frames
+    if (this._frame % 4 === 0) this._hud.update(this._score);
+  }
+
+  /**
+   * Test whether the ball has hit any block in the current frame.
+   * @returns {boolean}
+   */
+  _checkBlockCollision() {
+    const ballLane = this._ball.lane;
+    const ballX    = this._ball.x;
+    for (const seg of this._track.segments) {
+      if (!seg.hasBlock) continue;
+      const dz = seg.z - this._ballDist;
+      // Block near-edge has crossed the ball; ball hasn't fully exited back
+      if (dz + SlopeConfig.SEG_LEN >= 0 && dz < SlopeConfig.SEG_LEN * 0.0) {
+        const lanes = [seg.blockLane];
+        if (seg.blockLane2 >= 0) lanes.push(seg.blockLane2);
+        for (const lane of lanes) {
+          if (lane === ballLane) {
+            const center = -(SlopeConfig.TRACK_W/2) + SlopeConfig.LANE_W * (lane + 0.5);
+            if (Math.abs(ballX - center) < SlopeConfig.LANE_W * 0.34) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Composite the full frame with screen shake applied.
+   */
+  _drawFrame() {
+    const ctx = this._ctx;
+    const { dx, dy } = this._shake.update();
+    ctx.save();
+    if (dx || dy) ctx.translate(dx, dy);
+
+    this._renderer.draw(
+      this._track.segments,
+      this._ballDist,
+      this._ball.x,
+      this._score.speed,
+      this._deathFlash
+    );
+
+    ctx.restore();
+    if (this._deathFlash > 0) this._deathFlash--;
+  }
+
+  /** Handle ball death: shake, flash, overlay. */
+  _endGame() {
+    if (this._state !== 'playing') return;
+    this._state = 'dead';
+    this._deathFlash = 22;
+    this._shake.add(0.85);
+    this._trail.reset();
+
+    const isNew = this._score.saveIfBest();
+    this._score.saveSession(isNew);
+
+    setTimeout(() => {
+      this._showGameOver(isNew);
+      this._hud.update(this._score);
+    }, 400);
+  }
+
+  /**
+   * Populate and reveal the game-over overlay.
+   * @param {boolean} isNew
+   */
+  _showGameOver(isNew) {
+    this._overlay.innerHTML =
+      `<h2>GAME OVER</h2>
+       <div class="score-display">${this._score.score}</div>
+       ${isNew
+         ? `<div class="best-new">&#x1F3C6; New Best!</div>`
+         : `<div class="best-label">Best: ${this._score.best}</div>`
+       }
+       <div class="sub">Steer between lanes.<br>Avoid <span style="color:#ef4444">red blocks</span>. Don't fall off!</div>
+       <button class="play-btn" onclick="game.start()">&#9654; RETRY</button>
+       <div class="hint-row">Arrow Keys / A D &nbsp;&middot;&nbsp; Space to start</div>`;
+    this._overlay.style.display = 'flex';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PaletteController – wires the four colour-swatch buttons in the overlay
+// ═══════════════════════════════════════════════════════════════════════════════
+class PaletteController {
+  /**
+   * @param {SlopeGame} game
+   * @param {SlopeRenderer} renderer  exposed via game._renderer
+   */
+  constructor(game) {
+    this._game = game;
+    this._idx  = 0;
+  }
+
+  /**
+   * Switch to a palette by index and update active CSS class on swatch buttons.
+   * @param {number} idx 0-3
+   */
+  select(idx) {
+    this._idx = idx;
+    this._game._renderer.setPalette(idx);
+    document.querySelectorAll('.pal-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.pal) === idx);
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Bootstrap
+// ═══════════════════════════════════════════════════════════════════════════════
+const game    = new SlopeGame();
+const palette = new PaletteController(game);
+
+/** Global helper called by palette swatch onclick="setPalette(n)" */
+function setPalette(idx) { palette.select(idx); }
+
+/** Global helper called by header back button onclick="goBack()" */
+async function goBack() {
+  try {
+    const api = window.spaceAPI;
+    if (api?.tabs) {
+      const tabs = await api.tabs.list();
+      const act  = tabs.find(t => t.isActive);
+      if (act) { api.tabs.navigate(act.id, 'space://games'); return; }
+    }
+  } catch (_) {}
+  history.back();
+}
+
+</script>
+</body>
+</html>

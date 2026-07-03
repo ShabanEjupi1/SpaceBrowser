@@ -1,0 +1,72 @@
+/* TitleBar */
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  height: var(--titlebar-height);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-3);
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 200;
+}
+
+.dragRegion {
+  position: absolute;
+  inset: 0;
+  -webkit-app-region: drag;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  -webkit-app-region: no-drag;
+}
+
+.logoIcon {
+  flex-shrink: 0;
+}
+
+.logoText {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #93c5fd 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.windowControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  -webkit-app-region: no-drag;
+}
+
+.wcBtn {
+  width: 28px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+  }
+
+  &.wcClose:hover {
+    background: #c42b1c;
+    color: white;
+  }
+}

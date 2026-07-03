@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Apple Shoot – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:#020d05; display:flex; flex-direction:column; align-items:center;
+      min-height:100vh; font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    .header {
+      width:100%; display:flex; align-items:center; gap:12px;
+      padding:10px 20px; background:rgba(2,13,5,0.96);
+      border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0; z-index:10;
+    }
+    .back-btn {
+      background:#0a2010; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:6px 13px;
+      cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:6px;
+    }
+    .back-btn:hover { color:#e8e8f0; border-color:rgba(34,197,94,0.4); }
+    .info-row { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:13px; }
+    .badge {
+      background:#0a2010; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; padding:5px 14px; font-weight:700; white-space:nowrap;
+    }
+    canvas { display:block; cursor:none; }
+    #overlay {
+      position:fixed; inset:0; top:50px; background:rgba(0,8,2,0.88);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:18px; z-index:20; backdrop-filter:blur(4px);
+    }
+    #overlay h2 { font-size:34px; font-weight:800; color:#4ade80; text-shadow:0 0 30px rgba(74,222,128,0.4); }
+    #overlay .sub { font-size:14px; color:#166534; text-align:center; line-height:1.8; max-width:420px; }
+    #overlay .final { font-size:20px; font-weight:700; color:#4ade80; }
+    #overlay button {
+      background:linear-gradient(135deg,#16a34a,#15803d); border:none; border-radius:10px;
+      color:#fff; font-size:15px; font-weight:700; padding:12px 36px;
+      cursor:pointer; transition:opacity 0.15s; box-shadow:0 4px 24px rgba(22,163,74,0.4);
+    }
+    #overlay button:hover { opacity:0.85; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:15px;font-weight:700;">🍎 Apple Shoot</span>
+  <div class="info-row">
+    <div class="badge" id="scoreBadge">Score: 0</div>
+    <div class="badge" id="levelBadge">Level 1</div>
+    <div class="badge" id="livesBadge">❤️ 3</div>
+    <div class="badge" id="windBadge">💨 0.0</div>
+    <div class="badge" id="arrowsBadge">🏹 3/3</div>
+  </div>
+</div>
+<canvas id="c"></canvas>
+<div id="overlay">
+  <h2>🍎 Apple Shoot</h2>
+  <div class="sub">William Tell style archery!<br>Hold &amp; drag to aim · Release to fire · Hit the apple without harming the target!<br>Watch the wind indicator — it will push your arrow!</div>
+  <button onclick="startGame()">Nock Arrow</button>
+</div>
+
+<script>
+'use strict';
+
+const canvas  = document.getElementById('c');
+const ctx     = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight - 50;
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (state !== 'idle') drawScene(); });
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const ARCHER_X_RATIO = 0.12;
+const GRAVITY = 0.28;
+const MAX_ARROWS = 3;
+const ARROW_L = 36;
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let state = 'idle';
+let score, level, lives, arrowsLeft;
+let wind;          // pixels per frame horizontal drift
+let charging = false;
+let chargeStart = { x: 0, y: 0 };
+let mouseX = 0, mouseY = 0;
+let arrow = null;  // { x, y, vx, vy, active }
+let targets = [];  // { x, y, appleY, swayAngle, swayDir, hit, appleHit }
+let particles = [];
+let floatingTexts = [];
+let frame = 0;
+let levelClearing = false;
+
+// ─── Wind ─────────────────────────────────────────────────────────────────────
+function newWind() {
+  const maxW = 1.2 + level * 0.18;
+  wind = (Math.random() * 2 - 1) * maxW;
+  document.getElementById('windBadge').textContent = `💨 ${wind >= 0 ? '+' : ''}${wind.toFixed(1)}`;
+  document.getElementById('windBadge').style.color = Math.abs(wind) > 1.5 ? '#ef4444' : '';
+}
+
+// ─── Target placement ─────────────────────────────────────────────────────────
+function buildTargets() {
+  const CW = canvas.width, CH = canvas.height;
+  const ground = CH * 0.78;
+  const count = Math.min(1 + Math.floor(level / 2), 4);
+  targets = [];
+  const minX = CW * 0.45, maxX = CW * 0.88;
+  const step = (maxX - minX) / Math.max(count, 1);
+  for (let i = 0; i < count; i++) {
+    const x = minX + step * i + step * 0.3 + Math.random() * step * 0.3;
+    targets.push({
+      x, y: ground,
+      appleY: 0,  // will be calculated in draw
+      swayAngle: 0, swayDir: 1,
+      hit: false, appleHit: false,
+      bodyHit: false,
+    });
+  }
+}
+
+// ─── Particles ────────────────────────────────────────────────────────────────
+function spawnAppleParticles(x, y) {
+  for (let i = 0; i < 22; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 2 + Math.random() * 6;
+    particles.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3,
+      r: 4 + Math.random() * 4,
+      color: Math.random() < 0.6 ? '#ef4444' : '#4ade80',
+      life: 35, maxLife: 35,
+    });
+  }
+}
+
+function spawnHitParticles(x, y) {
+  for (let i = 0; i < 18; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 1.5 + Math.random() * 5;
+    particles.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2,
+      r: 3 + Math.random() * 3, color: '#fbbf24',
+      life: 30, maxLife: 30,
+    });
+  }
+}
+
+function spawnFloating(x, y, text, color) {
+  floatingTexts.push({ x, y, text, color, life: 45, maxLife: 45, vy: -1.1 });
+}
+
+// ─── Projectile ───────────────────────────────────────────────────────────────
+function shoot(fromX, fromY, toX, toY) {
+  if (arrowsLeft <= 0) return;
+  arrowsLeft--;
+  updateHUD();
+
+  // Direction toward aim point with extra y offset for arc
+  const dx = toX - fromX, dy = toY - fromY;
+  const dist = Math.hypot(dx, dy) || 1;
+  const speed = Math.min(22, dist * 0.065 + 14);
+  const nx = dx / dist, ny = dy / dist;
+
+  arrow = { x: fromX, y: fromY, vx: nx * speed, vy: ny * speed, active: true };
+}
+
+// ─── HUD ──────────────────────────────────────────────────────────────────────
+function updateHUD() {
+  document.getElementById('scoreBadge').textContent  = `Score: ${score}`;
+  document.getElementById('levelBadge').textContent  = `Level ${level}`;
+  document.getElementById('livesBadge').textContent  = '❤️'.repeat(lives) || '💀';
+  document.getElementById('arrowsBadge').textContent = `🏹 ${arrowsLeft}/${MAX_ARROWS}`;
+}
+
+// ─── Game flow ────────────────────────────────────────────────────────────────
+function startGame() {
+  score = 0; level = 1; lives = 3; arrowsLeft = MAX_ARROWS;
+  particles = []; floatingTexts = []; arrow = null;
+  frame = 0; levelClearing = false;
+  newWind();
+  buildTargets();
+  state = 'playing';
+  overlay.style.display = 'none';
+  requestAnimationFrame(loop);
+}
+
+function nextLevel() {
+  level++;
+  arrowsLeft = MAX_ARROWS;
+  arrow = null;
+  particles = []; floatingTexts = [];
+  levelClearing = false;
+  newWind();
+  buildTargets();
+  updateHUD();
+}
+
+function loseLife() {
+  lives--;
+  updateHUD();
+  if (lives <= 0) {
+    setTimeout(endGame, 600);
+  } else {
+    // Reset arrows if out, respawn targets
+    if (arrowsLeft === 0) arrowsLeft = MAX_ARROWS;
+    updateHUD();
+  }
+}
+
+function endGame() {
+  state = 'gameover';
+  overlay.innerHTML = `
+    <h2>💀 Game Over</h2>
+    <div class="sub">The apple got away…</div>
+    <div class="final">Final Score: ${score} &ensp;·&ensp; Level ${level}</div>
+    <button onclick="startGame()">Try Again</button>`;
+  overlay.style.display = 'flex';
+}
+
+// ─── Update ───────────────────────────────────────────────────────────────────
+function update() {
+  frame++;
+  if (state !== 'playing') return;
+
+  const CW = canvas.width, CH = canvas.height;
+  const ground = CH * 0.78;
+
+  // Target sway
+  targets.forEach(t => {
+    if (t.hit) return;
+    t.swayAngle += 0.015 * t.swayDir;
+    if (Math.abs(t.swayAngle) > 0.12) t.swayDir *= -1;
+  });
+
+  // Arrow physics
+  if (arrow && arrow.active) {
+    arrow.vy += GRAVITY;
+    arrow.vx += wind * 0.04;
+    arrow.x  += arrow.vx;
+    arrow.y  += arrow.vy;
+
+    // Off-screen
+    if (arrow.y > CH + 60 || arrow.x > CW + 100 || arrow.x < -100) {
+      arrow.active = false;
+      // Miss — no apple hit
+      spawnFloating(arrow.x > 0 ? Math.min(arrow.x, CW - 40) : 100, CH * 0.4, 'Miss!', '#94a3b8');
+      handleMiss();
+    }
+
+    // Apple hit detection
+    for (const t of targets) {
+      if (t.appleHit) continue; // allow hitting the apple even after a body hit
+      // Apple position (will match draw logic)
+      const ax = t.x + Math.sin(t.swayAngle) * 22;
+      const ay = t.y - 165;  // roughly top of character's head
+
+      const appleR = 14;
+      if (arrow.active && Math.hypot(arrow.x - ax, arrow.y - ay) < appleR + 4) {
+        // Apple hit!
+        t.appleHit = true;
+        arrow.active = false;
+        const pts = 100 + level * 50;
+        score += pts;
+        spawnAppleParticles(ax, ay);
+        spawnFloating(ax, ay - 20, `+${pts}`, '#4ade80');
+        updateHUD();
+        checkLevelComplete();
+        return;
+      }
+
+      // Body hit detection (miss = hit the person)
+      const bodyX = t.x, bodyY = t.y - 70;
+      if (arrow.active && Math.abs(arrow.x - bodyX) < 22 && Math.abs(arrow.y - bodyY) < 80) {
+        t.bodyHit = true;
+        arrow.active = false;
+        spawnHitParticles(arrow.x, arrow.y);
+        spawnFloating(arrow.x, arrow.y - 20, 'Oops! -50', '#ef4444');
+        score = Math.max(0, score - 50);
+        updateHUD();
+        loseLife();
+        return;
+      }
+    }
+  }
+
+  // Particles & floating texts
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.2; p.vx *= 0.97;
+    p.life--;
+  });
+  floatingTexts = floatingTexts.filter(t => t.life > 0);
+  floatingTexts.forEach(t => { t.y += t.vy; t.life--; });
+
+  // Level complete check
+  if (levelClearing && particles.length === 0 && floatingTexts.length === 0) {
+    levelClearing = false;
+    nextLevel();
+  }
+}
+
+function handleMiss() {
+  if (arrowsLeft === 0) {
+    // Check if any apple remains unshot
+    const remaining = targets.filter(t => !t.appleHit);
+    if (remaining.length > 0) loseLife();
+    // Replenish arrows for next attempt if still alive
+    if (lives > 0) {
+      setTimeout(() => {
+        arrow = null;
+        arrowsLeft = MAX_ARROWS;
+        updateHUD();
+      }, 500);
+    }
+  }
+}
+
+function checkLevelComplete() {
+  const allHit = targets.every(t => t.appleHit);
+  if (allHit) {
+    levelClearing = true;
+    spawnFloating(canvas.width / 2, canvas.height * 0.35, '🎯 Perfect!', '#fbbf24');
+  } else if (arrowsLeft === 0) {
+    // Still apples remaining
+    const remaining = targets.filter(t => !t.appleHit);
+    if (remaining.length > 0) loseLife();
+    if (lives > 0) {
+      setTimeout(() => {
+        arrow = null;
+        arrowsLeft = MAX_ARROWS;
+        updateHUD();
+      }, 500);
+    }
+  }
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────────────────
+function drawScene() {
+  const CW = canvas.width, CH = canvas.height;
+  const ground = CH * 0.78;
+  const archerX = CW * ARCHER_X_RATIO;
+
+  // Sky
+  const sky = ctx.createLinearGradient(0, 0, 0, ground);
+  sky.addColorStop(0, '#020d05');
+  sky.addColorStop(0.4, '#052010');
+  sky.addColorStop(1, '#0a3a1a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, CW, ground);
+
+  // Distant forest silhouette
+  ctx.fillStyle = '#052010';
+  for (let i = 0; i < Math.floor(CW / 28); i++) {
+    const tx = i * 28 + (i % 3) * 6;
+    const th = 60 + (i % 5) * 22;
+    // Pine tree
+    ctx.beginPath();
+    ctx.moveTo(tx + 14, ground - th);
+    ctx.lineTo(tx, ground - th * 0.55);
+    ctx.lineTo(tx + 7, ground - th * 0.55);
+    ctx.lineTo(tx + 2, ground - th * 0.28);
+    ctx.lineTo(tx + 28, ground - th * 0.28);
+    ctx.lineTo(tx + 21, ground - th * 0.55);
+    ctx.lineTo(tx + 28, ground - th * 0.55);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Ground
+  const g = ctx.createLinearGradient(0, ground, 0, CH);
+  g.addColorStop(0, '#166534');
+  g.addColorStop(0.3, '#14532d');
+  g.addColorStop(1, '#052e16');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, ground, CW, CH - ground);
+
+  // Ground texture
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) {
+    const gy = ground + (CH - ground) * (i / 4);
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(CW, gy); ctx.stroke();
+  }
+
+  // Target posts
+  targets.forEach(t => drawTargetPost(t, ground));
+
+  // Particles
+  particles.forEach(p => {
+    const a = p.life / p.maxLife;
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a + 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  });
+
+  // Arrow in flight
+  if (arrow && arrow.active) drawArrowInFlight(arrow);
+
+  // Archer
+  drawArcher(archerX, ground);
+
+  // Aim line while charging
+  if (charging && state === 'playing') {
+    const ax = archerX + 18, ay = ground - 110;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.setLineDash([6, 8]);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(mouseX, mouseY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Power indicator (drag distance)
+    const dist = Math.min(Math.hypot(mouseX - chargeStart.x, mouseY - chargeStart.y), 140);
+    const power = dist / 140;
+    ctx.strokeStyle = `hsl(${120 - power * 120}, 80%, 60%)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(chargeStart.x, chargeStart.y, dist * 0.3, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Floating texts
+  floatingTexts.forEach(t => {
+    const a = t.life / t.maxLife;
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.fillStyle = t.color;
+    ctx.font = 'bold 20px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(t.text, t.x, t.y);
+    ctx.restore();
+  });
+
+  // Custom cursor / aim sight
+  drawSight(mouseX, mouseY);
+
+  // Wind indicator
+  drawWindArrow();
+}
+
+function drawTargetPost(t, ground) {
+  const postH = 180;
+  const postX = t.x;
+  const postY = ground - postH;
+
+  // Post shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(postX + 4, postY + 4, 10, postH);
+
+  // Post
+  ctx.fillStyle = '#78350f';
+  ctx.fillRect(postX - 5, postY, 10, postH);
+
+  // Character standing on post base (in front)
+  drawCharacter(t, postX, ground);
+}
+
+function drawCharacter(t, x, ground) {
+  const headY = ground - 150;
+  const bodyY = ground - 100;
+
+  ctx.save();
+  // Sway
+  if (!t.hit) {
+    ctx.translate(x, ground);
+    ctx.rotate(t.swayAngle * 0.3);
+    ctx.translate(-x, -ground);
+  }
+
+  // Body
+  ctx.fillStyle = t.bodyHit ? '#7f1d1d' : '#1d4ed8';
+  ctx.beginPath();
+  ctx.roundRect(x - 16, bodyY, 32, 55, 6);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#fde68a';
+  ctx.beginPath(); ctx.arc(x, headY, 18, 0, Math.PI * 2); ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#1e3a5f';
+  ctx.beginPath(); ctx.arc(x - 6, headY - 2, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 6, headY - 2, 3.5, 0, Math.PI * 2); ctx.fill();
+
+  // Mouth (terrified smile)
+  ctx.strokeStyle = '#78350f';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, headY + 5, 7, 0.2, Math.PI - 0.2); ctx.stroke();
+
+  // Hat
+  ctx.fillStyle = '#1c1917';
+  ctx.fillRect(x - 20, headY - 26, 40, 10);
+  ctx.beginPath(); ctx.roundRect(x - 14, headY - 44, 28, 20, [4, 4, 0, 0]); ctx.fill();
+
+  // Arms (outstretched for balance)
+  ctx.strokeStyle = '#fde68a';
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - 16, bodyY + 16); ctx.lineTo(x - 38, bodyY + 30); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 16, bodyY + 16); ctx.lineTo(x + 38, bodyY + 30); ctx.stroke();
+
+  // Legs
+  ctx.beginPath();
+  ctx.moveTo(x - 8, ground - 45); ctx.lineTo(x - 14, ground); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 8, ground - 45); ctx.lineTo(x + 14, ground); ctx.stroke();
+
+  // Apple on head (if not hit)
+  if (!t.appleHit) {
+    const ax = x + Math.sin(t.swayAngle) * 22 * 0.5;
+    const ay = headY - 28;
+    t.appleY = ay; // store for collision
+
+    // Apple glow
+    ctx.save();
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(ax, ay, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath(); ctx.arc(ax + 4, ay + 4, 8, 0, Math.PI * 2); ctx.fill();
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.ellipse(ax - 4, ay - 5, 4.5, 3.5, -0.5, 0, Math.PI * 2); ctx.fill();
+    // Stem & leaf
+    ctx.strokeStyle = '#4d7c0f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ax, ay - 14); ctx.lineTo(ax + 2, ay - 20); ctx.stroke();
+    ctx.fillStyle = '#4d7c0f';
+    ctx.beginPath(); ctx.ellipse(ax + 5, ay - 20, 5, 3, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawArcher(x, ground) {
+  const bodyY = ground - 120;
+  const headY = ground - 158;
+
+  ctx.save();
+
+  // Body
+  ctx.fillStyle = '#7c3aed';
+  ctx.beginPath();
+  ctx.roundRect(x - 14, bodyY, 28, 60, 6);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#fde68a';
+  ctx.beginPath(); ctx.arc(x, headY, 16, 0, Math.PI * 2); ctx.fill();
+
+  // Determined expression
+  ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x - 5, headY - 2); ctx.lineTo(x - 2, headY - 5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 5, headY - 2); ctx.lineTo(x + 2, headY - 5); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, headY + 5, 5, 0.3, Math.PI - 0.3); ctx.stroke();
+
+  // Hat with feather
+  ctx.fillStyle = '#1c1917';
+  ctx.fillRect(x - 18, headY - 22, 36, 8);
+  ctx.beginPath(); ctx.roundRect(x - 12, headY - 38, 24, 18, [4,4,0,0]); ctx.fill();
+  ctx.strokeStyle = '#4d7c0f'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x + 12, headY - 36); ctx.quadraticCurveTo(x + 22, headY - 52, x + 16, headY - 64); ctx.stroke();
+
+  // Bow (arm extended right)
+  const bowX = x + 20, bowY = ground - 115;
+  ctx.strokeStyle = '#92400e'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(bowX, bowY, 32, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
+  // Bow string
+  ctx.strokeStyle = '#fef3c7'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(bowX, bowY - 32);
+  ctx.lineTo(bowX - 8, bowY);
+  ctx.lineTo(bowX, bowY + 32); ctx.stroke();
+
+  // Arrow nocked on bow
+  if (!arrow || !arrow.active) {
+    if (arrowsLeft > 0) {
+      ctx.strokeStyle = '#a16207'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x - 5, bowY); ctx.lineTo(bowX + 8, bowY); ctx.stroke();
+      ctx.fillStyle = '#6b7280';
+      ctx.beginPath();
+      ctx.moveTo(bowX + 8, bowY);
+      ctx.lineTo(bowX + 2, bowY - 4);
+      ctx.lineTo(bowX + 2, bowY + 4);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // Arm pulling string (only when charging)
+  if (charging) {
+    const pullBack = Math.min(Math.hypot(mouseX - chargeStart.x, mouseY - chargeStart.y) / 140, 1);
+    ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, bodyY + 10);
+    ctx.lineTo(x - 12 - pullBack * 12, bodyY + 10); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawArrowInFlight(a) {
+  const angle = Math.atan2(a.vy, a.vx);
+  ctx.save();
+  ctx.translate(a.x, a.y);
+  ctx.rotate(angle);
+  // Shaft
+  ctx.strokeStyle = '#a16207'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-ARROW_L, 0); ctx.lineTo(8, 0); ctx.stroke();
+  // Tip
+  ctx.fillStyle = '#6b7280';
+  ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(0,-4); ctx.lineTo(0,4); ctx.closePath(); ctx.fill();
+  // Fletching
+  ctx.fillStyle = '#dc2626';
+  ctx.beginPath(); ctx.moveTo(-ARROW_L, 0); ctx.lineTo(-ARROW_L + 10, -7); ctx.lineTo(-ARROW_L + 6, 0); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-ARROW_L, 0); ctx.lineTo(-ARROW_L + 10,  7); ctx.lineTo(-ARROW_L + 6, 0); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawSight(x, y) {
+  const r = 16, cross = 10, gap = 5;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(74,222,128,0.9)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#4ade80';
+  ctx.shadowBlur = 4;
+  // Circle
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  // Crosshairs
+  ctx.beginPath(); ctx.moveTo(x - r - cross, y); ctx.lineTo(x - r + gap, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + r - gap, y); ctx.lineTo(x + r + cross, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y - r - cross); ctx.lineTo(x, y - r + gap); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y + r - gap); ctx.lineTo(x, y + r + cross); ctx.stroke();
+  // Center dot
+  ctx.fillStyle = 'rgba(74,222,128,0.9)';
+  ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawWindArrow() {
+  const CW = canvas.width;
+  const wx = CW * 0.5, wy = 26;
+  const len = Math.abs(wind) * 22;
+  const dir = wind >= 0 ? 1 : -1;
+
+  ctx.save();
+  ctx.fillStyle = Math.abs(wind) > 1.5 ? '#ef4444' : '#60a5fa';
+  ctx.globalAlpha = 0.7;
+  // Arrow body
+  ctx.beginPath();
+  ctx.moveTo(wx - dir * len, wy);
+  ctx.lineTo(wx + dir * len, wy);
+  ctx.stroke();
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(wx + dir * len, wy);
+  ctx.lineTo(wx + dir * (len - 8), wy - 5);
+  ctx.lineTo(wx + dir * (len - 8), wy + 5);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ─── Input ────────────────────────────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - r.left) * (canvas.width / r.width);
+  mouseY = (e.clientY - r.top) * (canvas.height / r.height);
+});
+
+canvas.addEventListener('mousedown', e => {
+  if (state !== 'playing') return;
+  if (arrow && arrow.active) return;
+  if (arrowsLeft <= 0) return;
+  charging = true;
+  chargeStart = { x: e.clientX - canvas.getBoundingClientRect().left, y: e.clientY - canvas.getBoundingClientRect().top };
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (!charging || state !== 'playing') return;
+  charging = false;
+  const r = canvas.getBoundingClientRect();
+  const rx = (e.clientX - r.left) * (canvas.width / r.width);
+  const ry = (e.clientY - r.top) * (canvas.height / r.height);
+  const CW = canvas.width, CH = canvas.height;
+  const archerX = CW * ARCHER_X_RATIO;
+  const fromX = archerX + 20, fromY = CH * 0.78 - 115;
+
+  // Shoot toward the clicked point (aim where mouse was pressed)
+  shoot(fromX, fromY, rx, ry);
+});
+
+// ─── Loop ─────────────────────────────────────────────────────────────────────
+function loop() {
+  if (state !== 'playing') return;
+  update();
+  drawScene();
+  requestAnimationFrame(loop);
+}
+
+// Static preview on load
+(function() {
+  resize();
+  const CW = canvas.width, CH = canvas.height;
+  const sky = ctx.createLinearGradient(0, 0, 0, CH * 0.78);
+  sky.addColorStop(0, '#020d05');
+  sky.addColorStop(1, '#0a3a1a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, CW, CH * 0.78);
+  ctx.fillStyle = '#166534';
+  ctx.fillRect(0, CH * 0.78, CW, CH * 0.22);
+})();
+
+async function goBack() {
+  try {
+    const api = window.spaceAPI;
+    if (api?.tabs) {
+      const tabs = await api.tabs.list();
+      const active = tabs.find(t => t.isActive);
+      if (active) { api.tabs.navigate(active.id, 'space://games'); return; }
+    }
+  } catch (_) {}
+  history.back();
+}
+</script>
+</body>
+</html>

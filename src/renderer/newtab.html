@@ -1,0 +1,744 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Tab – Space</title>
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --surface: #16161a;
+      --surface-2: #1a1a24;
+      --border: rgba(255,255,255,0.07);
+      --border-hover: rgba(37,99,235,0.45);
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888aa;
+      --accent: #2563eb;
+      --accent-light: #60a5fa;
+      --accent-glow: rgba(37,99,235,0.22);
+      --chess-dark: #3d2b1f;
+      --chess-light: #f0d9b5;
+      --chess-accent: #b58863;
+      --radius: 12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 80px;
+      gap: 40px;
+      user-select: none;
+      -webkit-app-region: no-drag;
+      overflow-y: auto;
+    }
+
+    /* ── Logo ── */
+    .logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo svg {
+      filter: drop-shadow(0 0 24px var(--accent-glow));
+    }
+
+    .logo-text {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      background: linear-gradient(135deg, #93c5fd 0%, #2563eb 60%, #1e40af 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Greeting ── */
+    .greeting {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-top: -16px;
+    }
+
+    /* ── Search bar ── */
+    .search-wrap {
+      display: flex;
+      align-items: center;
+      width: min(580px, 92vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 13px 20px;
+      color: var(--text-primary);
+      font-size: 15px;
+      user-select: text;
+    }
+
+    .search-input::placeholder { color: var(--text-secondary); }
+
+    .search-btn {
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      padding: 9px 18px;
+      margin: 4px;
+      border-radius: 36px;
+      color: #fff;
+      transition: opacity 0.15s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .search-btn:hover  { opacity: 0.88; transform: scale(1.03); }
+    .search-btn:active { opacity: 0.75; transform: scale(0.97); }
+
+    /* ── Section heading ── */
+    .section-label {
+      width: min(700px, 96vw);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Quick links ── */
+    .quick-links {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 700px;
+    }
+
+    .quick-link {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+      min-width: 78px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .quick-link:hover {
+      background: rgba(37, 99, 235, 0.1);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+
+    .quick-link-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    /* ── Games section ── */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      width: min(700px, 96vw);
+    }
+
+    .game-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      text-decoration: none;
+      color: var(--text-primary);
+      transition: background 0.15s, border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .game-card.chess::before     { background: radial-gradient(ellipse at top left, rgba(181,136,99,0.14) 0%, transparent 70%); }
+    .game-card.chess3d::before   { background: radial-gradient(ellipse at top left, rgba(99,102,241,0.14) 0%, transparent 70%); }
+    .game-card.flappy::before    { background: radial-gradient(ellipse at top left, rgba(34,197,94,0.14) 0%, transparent 70%); }
+    .game-card.slope::before     { background: radial-gradient(ellipse at top left, rgba(239,68,68,0.14) 0%, transparent 70%); }
+    .game-card.goldminer::before { background: radial-gradient(ellipse at top left, rgba(234,179,8,0.14) 0%, transparent 70%); }
+    .game-card.eightball::before { background: radial-gradient(ellipse at top left, rgba(22,163,74,0.14) 0%, transparent 70%); }
+    .game-card.boxhead::before   { background: radial-gradient(ellipse at top left, rgba(220,38,38,0.14) 0%, transparent 70%); }
+    .game-card.subway::before    { background: radial-gradient(ellipse at top left, rgba(249,115,22,0.14) 0%, transparent 70%); }
+    .game-card.amongus::before   { background: radial-gradient(ellipse at top left, rgba(204,0,0,0.14) 0%, transparent 70%); }
+    .game-card.football::before  { background: radial-gradient(ellipse at top left, rgba(20,83,45,0.14) 0%, transparent 70%); }
+    .game-card.standoff::before  { background: radial-gradient(ellipse at top left, rgba(127,29,29,0.14) 0%, transparent 70%); }
+    .game-card.blackops::before  { background: radial-gradient(ellipse at top left, rgba(101,163,13,0.14) 0%, transparent 70%); }
+
+    .game-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .game-card:hover::before { opacity: 1; }
+
+    .game-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .game-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .game-icon.chess-icon {
+      background: linear-gradient(135deg, #3d2b1f 0%, #6b4226 100%);
+      box-shadow: 0 4px 14px rgba(181,136,99,0.3);
+    }
+
+    .game-card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .game-card-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .game-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      align-self: flex-start;
+    }
+
+    .badge-3d {
+      background: rgba(37,99,235,0.2);
+      color: var(--accent-light);
+      border: 1px solid rgba(37,99,235,0.3);
+    }
+
+    .badge-online {
+      background: rgba(52,211,153,0.15);
+      color: #34d399;
+      border: 1px solid rgba(52,211,153,0.25);
+    }
+
+    /* ── Mini 3D chess board preview ── */
+    .chess-preview {
+      width: 100%;
+      aspect-ratio: 1;
+      max-width: 160px;
+      align-self: center;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 8px 24px rgba(0,0,0,0.5);
+      transform: perspective(280px) rotateX(28deg) rotateZ(-4deg);
+      transform-style: preserve-3d;
+      flex-shrink: 0;
+    }
+
+    .chess-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    .chess-cell.light { background: #f0d9b5; }
+    .chess-cell.dark  { background: #b58863; }
+
+    /* ── Clock widget ── */
+    .clock {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-top: -20px;
+    }
+
+    #clock-time {
+      font-size: 32px;
+      font-weight: 300;
+      color: var(--text-primary);
+      letter-spacing: 0.02em;
+      display: block;
+      text-align: center;
+    }
+
+    #clock-date {
+      text-align: center;
+      display: block;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Logo -->
+  <div class="logo">
+    <svg width="54" height="54" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="28" cy="28" r="28" fill="url(#bgGrad)"/>
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#60a5fa" stroke-width="2" opacity="0.7"/>
+      <circle cx="28" cy="28" r="3.5" fill="#2563eb"/>
+      <ellipse cx="28" cy="28" rx="22" ry="8" fill="none" stroke="#2563eb" stroke-width="1.5" opacity="0.5"
+               transform="rotate(-30 28 28)"/>
+      <circle cx="14" cy="12" r="1.5" fill="#60a5fa" opacity="0.8"/>
+      <circle cx="44" cy="18" r="1"   fill="#60a5fa" opacity="0.6"/>
+      <circle cx="40" cy="42" r="1.5" fill="#2563eb" opacity="0.7"/>
+      <circle cx="10" cy="38" r="1"   fill="#60a5fa" opacity="0.5"/>
+      <defs>
+        <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stop-color="#0f1a2e"/>
+          <stop offset="100%" stop-color="#0d0d0f"/>
+        </radialGradient>
+      </defs>
+    </svg>
+    <span class="logo-text">SPACE</span>
+  </div>
+
+  <!-- Clock -->
+  <div class="clock">
+    <span id="clock-time">00:00</span>
+    <span id="clock-date"></span>
+  </div>
+
+  <!-- Dynamic greeting -->
+  <p class="greeting" id="greeting">Welcome back</p>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <input
+      id="searchInput"
+      class="search-input"
+      type="text"
+      placeholder="Search or enter a URL…"
+      autofocus
+      autocomplete="off"
+    />
+    <button class="search-btn" id="searchBtn" title="Search (Enter)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.8"/>
+        <path d="M10.5 10.5L14 14" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Quick links -->
+  <div class="section-label">Quick Access</div>
+  <div class="quick-links">
+    <div class="quick-link" onclick="openUrl('https://github.com')" title="GitHub">
+      <span class="quick-link-icon">🐙</span>GitHub
+    </div>
+    <div class="quick-link" onclick="openUrl('https://www.youtube.com')" title="YouTube">
+      <span class="quick-link-icon">▶️</span>YouTube
+    </div>
+    <div class="quick-link" onclick="openUrl('https://www.google.com')" title="Google">
+      <span class="quick-link-icon">🔍</span>Google
+    </div>
+    <div class="quick-link" onclick="openUrl('https://news.ycombinator.com')" title="Hacker News">
+      <span class="quick-link-icon">🗞️</span>HN
+    </div>
+    <div class="quick-link" onclick="openUrl('https://huggingface.co')" title="HuggingFace">
+      <span class="quick-link-icon">🤗</span>HuggingFace
+    </div>
+    <div class="quick-link" onclick="openUrl('https://www.reddit.com')" title="Reddit">
+      <span class="quick-link-icon">💬</span>Reddit
+    </div>
+    <div class="quick-link" onclick="openUrl('space://chess')" title="Play Chess – integrated, offline">
+      <span class="quick-link-icon">♟️</span>Chess
+    </div>
+    <div class="quick-link" onclick="openUrl('space://games')" title="All Games">
+      <span class="quick-link-icon">🎮</span>Games
+    </div>
+    <div class="quick-link" onclick="openUrl('space://extensions')" title="Extension Marketplace">
+      <span class="quick-link-icon">🧩</span>Extensions
+    </div>
+    <div class="quick-link" onclick="openUrl('space://settings')" title="Browser Settings">
+      <span class="quick-link-icon">⚙️</span>Settings
+    </div>
+  </div>
+
+  <!-- Games section -->
+  <div class="section-label">Games
+    <span style="margin-left:auto;font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;">
+      <span class="quick-link" onclick="openUrl('space://games')"
+        style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;min-width:unset;font-size:11px;border-radius:8px;">
+        Browse All Games →
+      </span>
+    </span>
+  </div>
+  <div class="games-grid">
+
+    <!-- Chess -->
+    <div class="game-card chess" onclick="openUrl('space://chess')" title="Play Chess offline" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon chess-icon">♟</div>
+        <div>
+          <div class="game-card-title">Chess</div>
+          <div class="game-card-subtitle">Integrated engine · AI · LAN</div>
+        </div>
+      </div>
+      <div class="chess-preview" id="chessPreview" aria-hidden="true"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="game-badge badge-3d">3D Board</span>
+        <span class="game-badge badge-online">Offline</span>
+      </div>
+    </div>
+
+    <!-- 3D Tri-Level Chess -->
+    <div class="game-card chess3d" onclick="openUrl('space://chess3d')" title="3D Tri-Level Chess" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#1e1b4b,#4338ca);box-shadow:0 4px 14px rgba(99,102,241,0.3);">♛</div>
+        <div>
+          <div class="game-card-title">3D Chess</div>
+          <div class="game-card-subtitle">Tri-level Star Trek style</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge" style="background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);">3 Levels</span>
+        <span class="game-badge badge-online">Offline · Undo</span>
+      </div>
+    </div>
+
+    <!-- Flappy Bird -->
+    <div class="game-card flappy" onclick="openUrl('space://flappy')" title="Flappy Bird" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#14532d,#15803d);box-shadow:0 4px 14px rgba(34,197,94,0.3);">🐦</div>
+        <div>
+          <div class="game-card-title">Flappy Bird</div>
+          <div class="game-card-subtitle">Dodge the pipes</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · Arcade</span>
+      </div>
+    </div>
+
+    <!-- Slope -->
+    <div class="game-card slope" onclick="openUrl('space://slope')" title="Slope 3D Runner" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#7f1d1d,#b91c1c);box-shadow:0 4px 14px rgba(239,68,68,0.3);">🔴</div>
+        <div>
+          <div class="game-card-title">Slope</div>
+          <div class="game-card-subtitle">3D downhill runner</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · Casual</span>
+      </div>
+    </div>
+
+    <!-- Gold Miner -->
+    <div class="game-card goldminer" onclick="openUrl('space://goldminer')" title="Gold Miner" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#78350f,#d97706);box-shadow:0 4px 14px rgba(234,179,8,0.3);">⛏️</div>
+        <div>
+          <div class="game-card-title">Gold Miner</div>
+          <div class="game-card-subtitle">Swing the claw, grab gold</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · Puzzle</span>
+      </div>
+    </div>
+
+    <!-- 8 Ball Pool -->
+    <div class="game-card eightball" onclick="openUrl('space://eightball')" title="8 Ball Pool" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#052e16,#15803d);box-shadow:0 4px 14px rgba(22,163,74,0.3);">🎱</div>
+        <div>
+          <div class="game-card-title">8 Ball Pool</div>
+          <div class="game-card-subtitle">Classic billiards · 2-player</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · 2P</span>
+      </div>
+    </div>
+
+    <!-- Box Head -->
+    <div class="game-card boxhead" onclick="openUrl('space://boxhead')" title="Box Head Zombies" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#450a0a,#dc2626);box-shadow:0 4px 14px rgba(220,38,38,0.3);">🧟</div>
+        <div>
+          <div class="game-card-title">Box Head</div>
+          <div class="game-card-subtitle">Zombie waves · 2-player co-op</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · 2P · Action</span>
+      </div>
+    </div>
+
+    <!-- Subway Dash -->
+    <div class="game-card subway" onclick="openUrl('space://subway')" title="Subway Dash" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#431407,#ea580c);box-shadow:0 4px 14px rgba(249,115,22,0.3);">🏃</div>
+        <div>
+          <div class="game-card-title">Subway Dash</div>
+          <div class="game-card-subtitle">Endless runner · dodge trains</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · Arcade</span>
+      </div>
+    </div>
+
+    <!-- Among Us -->
+    <div class="game-card amongus" onclick="openUrl('space://amongus')" title="Among Us" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#450a0a,#991b1b);box-shadow:0 4px 14px rgba(204,0,0,0.3);">🔴</div>
+        <div>
+          <div class="game-card-title">Among Us</div>
+          <div class="game-card-subtitle">Impostor mode · eliminate crew</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · Strategy</span>
+      </div>
+    </div>
+
+    <!-- Football -->
+    <div class="game-card football" onclick="openUrl('space://football')" title="Street Football" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#052e16,#166534);box-shadow:0 4px 14px rgba(22,163,74,0.25);">⚽</div>
+        <div>
+          <div class="game-card-title">Street Football</div>
+          <div class="game-card-subtitle">2-player kick-off · local</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · 2P · Sports</span>
+      </div>
+    </div>
+
+    <!-- Standoff -->
+    <div class="game-card standoff" onclick="openUrl('space://standoff')" title="Standoff Tactics" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#450a0a,#7f1d1d);box-shadow:0 4px 14px rgba(127,29,29,0.35);">🔫</div>
+        <div>
+          <div class="game-card-title">Standoff</div>
+          <div class="game-card-subtitle">Tactical shooter · 2-player</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · 2P · Action</span>
+      </div>
+    </div>
+
+    <!-- Black Ops / Commando Ops -->
+    <div class="game-card blackops" onclick="openUrl('space://blackops')" title="Commando Ops" style="cursor:pointer;">
+      <div class="game-card-header">
+        <div class="game-icon" style="background:linear-gradient(135deg,#1a2e05,#4d7c0f);box-shadow:0 4px 14px rgba(101,163,13,0.3);">🪖</div>
+        <div>
+          <div class="game-card-title">Commando Ops</div>
+          <div class="game-card-subtitle">Solo military wave shooter</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <span class="game-badge badge-online">Offline · Action</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── Clock ──────────────────────────────────────────────────────────────────
+    function updateClock() {
+      const now  = new Date();
+      const h    = String(now.getHours()).padStart(2, '0');
+      const m    = String(now.getMinutes()).padStart(2, '0');
+      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      document.getElementById('clock-time').textContent = `${h}:${m}`;
+      document.getElementById('clock-date').textContent =
+        `${days[now.getDay()]}, ${mons[now.getMonth()]} ${now.getDate()}`;
+    }
+    updateClock();
+    setInterval(updateClock, 10000);
+
+    // ── Dynamic greeting ───────────────────────────────────────────────────────
+    const greetingEl = document.getElementById('greeting');
+    const hour = new Date().getHours();
+    if      (hour < 5)  greetingEl.textContent = 'Burning the midnight oil 🌙';
+    else if (hour < 12) greetingEl.textContent = 'Good morning ☀️';
+    else if (hour < 17) greetingEl.textContent = 'Good afternoon 🌤️';
+    else if (hour < 21) greetingEl.textContent = 'Good evening 🌆';
+    else                greetingEl.textContent = 'Good night 🌙';
+
+    // ── Search ─────────────────────────────────────────────────────────────────
+    // When Space Search (the default) is selected, route through our built-in
+    // AI search page (space://search?q=…). For other engines, navigate directly.
+    async function doSearch() {
+      const val = document.getElementById('searchInput').value.trim();
+      if (!val) return;
+
+      const isUrl = /^(https?:\/\/)/.test(val) ||
+        (/^[a-zA-Z0-9-]+\.[a-z]{2,}/.test(val) && !val.includes(' '));
+
+      let target;
+      if (isUrl) {
+        target = val.startsWith('http') ? val : 'https://' + val;
+      } else {
+        // Check which search engine is configured
+        let searchUrl = `space://search?q=${encodeURIComponent(val)}`;
+        try {
+          const spaceAPI = window.spaceAPI;
+          if (spaceAPI?.browser?.getSearchEngines) {
+            const engines = await spaceAPI.browser.getSearchEngines();
+            const currentKey = await spaceAPI.browser.getSearchEngine();
+            const engine = engines.find(e => e.key === currentKey);
+            if (engine?.url) {
+              searchUrl = engine.url.replace('%s', encodeURIComponent(val));
+            }
+          }
+        } catch (_) { /* no spaceAPI – use fallback */ }
+        target = searchUrl;
+      }
+
+      // Navigate via spaceAPI for proper BrowserView navigation
+      try {
+        const spaceAPI = window.spaceAPI;
+        if (spaceAPI?.tabs) {
+          const tabs = await spaceAPI.tabs.list();
+          const active = tabs.find(t => t.isActive);
+          if (active) {
+            spaceAPI.tabs.navigate(active.id, target);
+            return;
+          }
+        }
+      } catch (_) {}
+
+      // Fallback: direct navigation (works in dev browser preview)
+      window.location.href = target;
+    }
+
+    document.getElementById('searchBtn').addEventListener('click', doSearch);
+    document.getElementById('searchInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch();
+    });
+
+    // ── Navigation helper ──────────────────────────────────────────────────────
+    async function openUrl(url) {
+      try {
+        const spaceAPI = window.spaceAPI;
+        if (spaceAPI?.tabs) {
+          const tabs = await spaceAPI.tabs.list();
+          const active = tabs.find(t => t.isActive);
+          if (active) {
+            spaceAPI.tabs.navigate(active.id, url);
+            return;
+          }
+        }
+      } catch (_) {}
+      window.location.href = url;
+    }
+
+    // ── Mini 3D chess board ────────────────────────────────────────────────────
+    // FEN: standard starting position (rows 8→1)
+    const FEN_PIECES = {
+      'r':'♜','n':'♞','b':'♝','q':'♛','k':'♚','p':'♟',
+      'R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔','P':'♙',
+    };
+    const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+    const rows = START_FEN.split('/');
+    const board = document.getElementById('chessPreview');
+
+    rows.forEach((row, ri) => {
+      let ci = 0;
+      for (const ch of row) {
+        if (ch >= '1' && ch <= '8') {
+          for (let i = 0; i < parseInt(ch); i++) {
+            const cell = document.createElement('div');
+            cell.className = 'chess-cell ' + ((ri + ci) % 2 === 0 ? 'light' : 'dark');
+            board.appendChild(cell);
+            ci++;
+          }
+        } else {
+          const cell = document.createElement('div');
+          cell.className = 'chess-cell ' + ((ri + ci) % 2 === 0 ? 'light' : 'dark');
+          const piece = FEN_PIECES[ch];
+          if (piece) {
+            cell.textContent = piece;
+            cell.style.color = ch === ch.toUpperCase() ? '#fff' : '#1a0a00';
+            cell.style.textShadow = ch === ch.toUpperCase()
+              ? '0 1px 2px rgba(0,0,0,0.8)'
+              : '0 1px 2px rgba(255,255,255,0.3)';
+            cell.style.fontSize = '10px';
+          }
+          board.appendChild(cell);
+          ci++;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Tower Builder – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:#0a0a1a; display:flex; flex-direction:column; align-items:center;
+      height:100vh; font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    .header {
+      width:100%; display:flex; align-items:center; gap:10px;
+      padding:8px 16px; background:rgba(5,5,20,0.97);
+      border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0; z-index:10;
+    }
+    .back-btn {
+      background:#0d0d28; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:5px 12px;
+      cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:5px;
+    }
+    .back-btn:hover { color:#e8e8f0; border-color:rgba(56,189,248,0.5); }
+    .info-row { margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px; }
+    .badge {
+      background:#0d0d28; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; padding:4px 12px; font-weight:700;
+    }
+    .badge.purple { border-color:rgba(56,189,248,0.5); color:#38bdf8; }
+    .badge.gold   { border-color:rgba(251,191,36,0.5); color:#fbbf24; }
+    canvas { display:block; cursor:pointer; }
+
+    #overlay {
+      position:fixed; inset:0; top:44px; background:rgba(5,3,20,0.93);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:16px; z-index:20; backdrop-filter:blur(5px);
+    }
+    #overlay h2 { font-size:36px; font-weight:800; color:#38bdf8; text-shadow:0 0 30px rgba(56,189,248,0.6); }
+    #overlay .sub { font-size:13px; color:#0369a1; text-align:center; line-height:1.9; max-width:360px; }
+    #overlay .final { font-size:22px; font-weight:800; color:#fbbf24; }
+    #overlay button {
+      background:linear-gradient(135deg,#0284c7,#38bdf8); border:none; border-radius:12px;
+      color:#fff; font-size:16px; font-weight:700; padding:13px 40px;
+      cursor:pointer; transition:opacity 0.15s; box-shadow:0 4px 28px rgba(2,132,199,0.5);
+    }
+    #overlay button:hover { opacity:0.85; }
+    .hi-badge { font-size:14px; color:#38bdf8; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); border-radius:8px; padding:6px 18px; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:14px;font-weight:700;">🏗️ Tower Builder</span>
+  <div class="info-row">
+    <div class="badge purple" id="scoreBadge">Score: 0</div>
+    <div class="badge gold"   id="levelBadge">Level 1</div>
+    <div class="badge"        id="comboBadge">Combo ×1</div>
+    <div class="badge"        id="hiBadge">Best: 0</div>
+  </div>
+</div>
+<canvas id="c"></canvas>
+
+<div id="overlay">
+  <h2>🏗️ Tower Builder</h2>
+  <div class="sub">
+    Tap / click / Space to drop the block!<br>
+    Line up precisely for a <strong style="color:#fbbf24;">Perfect</strong> bonus.<br>
+    Overhang gets cut — keep a thin tower alive as long as possible!
+  </div>
+  <div class="hi-badge" id="ovHiBadge">Best: 0</div>
+  <div class="final" id="finalScore" style="display:none;"></div>
+  <button onclick="startGame()">Build! 🏗️</button>
+</div>
+
+<script>
+'use strict';
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+function resize() { canvas.width=window.innerWidth; canvas.height=window.innerHeight-44; }
+resize(); window.addEventListener('resize', resize);
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const BASE_H      = 110; // block height px — apartment building scale
+const BLOCK_H     = 110; // each dropped block height
+const INIT_W      = 280;
+const MIN_W       = 20;  // game over if block becomes thinner
+const SCROLL_SPD  = 2.4; // pixels per frame: how fast tower scrolls up
+const PERF_THR    = 22;  // px tolerance for "perfect" placement (magnetic snap)
+const SNAP_ZONE   = 45;  // px range where snap preview glow activates
+
+// Color palette for blocks — blues, greens, gold, teal only (no red/pink/purple)
+const PALETTES = [
+  ['#0369a1','#0284c7','#38bdf8'],  // sky blue
+  ['#2563eb','#3b82f6','#60a5fa'],  // electric blue
+  ['#059669','#10b981','#34d399'],  // emerald green
+  ['#d97706','#f59e0b','#fbbf24'],  // amber gold
+  ['#0891b2','#06b6d4','#67e8f9'],  // cyan teal
+  ['#1d4ed8','#4f46e5','#818cf8'],  // indigo
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let gameState = 'idle';
+let score, level, combo, hiScore;
+try { hiScore = parseInt(localStorage.getItem('towerHi')||'0'); } catch(_){ hiScore=0; }
+
+let stack    = [];  // { x, w, y, color }
+let swingBlock; // { x, w, dir, speed }
+let cameraY  = 0;   // scroll offset (increases as tower grows)
+let particles = [];
+let floatingTexts = [];
+let rafId = 0;
+let frame = 0;
+let speedMult = 1.0;
+let baseW;   // width of current base
+
+function blockColor(level) {
+  const pal = PALETTES[Math.floor(level/3) % PALETTES.length];
+  return pal[level % pal.length];
+}
+
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  score=0; level=0; combo=1; speedMult=1.0; cameraY=0;
+  stack=[]; particles=[]; floatingTexts=[]; frame=0;
+
+  const CW = canvas.width, CH = canvas.height;
+  const baseX = CW/2 - INIT_W/2;
+  const baseY = CH - 60;
+
+  // Ground block
+  stack.push({ x:baseX, w:INIT_W, y:baseY, color:'#4b5563', base:true });
+  baseW = INIT_W;
+  spawnSwing();
+
+  gameState = 'playing';
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(loop);
+  updateHUD();
+}
+
+function spawnSwing() {
+  const CW = canvas.width;
+  const topBlock = stack[stack.length-1];
+  const w = topBlock.w;
+  const col = blockColor(level);
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const targetY = topBlock.y - BLOCK_H;
+  // Start well above the visible top of the canvas (camera-space top minus buffer)
+  const startY = cameraY - BLOCK_H - canvas.height * 0.15;
+  swingBlock = {
+    x: topBlock.x + topBlock.w/2 - w/2, // centered above the top block
+    w: w,
+    dir: dir,
+    speed: Math.min(8 + speedMult*1.4, 18),
+    color: col,
+    y: startY,
+    targetY: targetY,
+    dropPhase: true,   // true while block is falling from sky
+    dropVY: 0,         // current fall velocity
+  };
+}
+
+function drop() {
+  if (gameState !== 'playing') return;
+  if (swingBlock.dropPhase) return; // can't drop while block is still falling
+
+  const top = stack[stack.length-1];
+  const sx = swingBlock.x;
+  const tw = swingBlock.w;
+
+  // Overlap with block below
+  const overlapL = Math.max(sx, top.x);
+  const overlapR = Math.min(sx + tw, top.x + top.w);
+  const overlapW = overlapR - overlapL;
+
+  if (overlapW <= 0) {
+    // Completely missed!
+    flashMiss(swingBlock);
+    endGame(); return;
+  }
+
+  // MAGNETIC SNAP: if within snap zone, treat as perfect
+  const isPerfect = Math.abs(sx - top.x) <= PERF_THR;
+  const newX = isPerfect ? top.x : overlapL;
+  const newW = isPerfect ? top.w  : overlapW;
+
+  // Visual snap flash on magnetic placement
+  if (isPerfect && Math.abs(sx - top.x) > 2) {
+    // Snap sparkle at edges
+    [newX, newX + newW].forEach(ex => {
+      for (let i=0;i<8;i++) {
+        const a=Math.random()*Math.PI*2;
+        particles.push({ x:ex, y:swingBlock.y+BLOCK_H/2, vx:Math.cos(a)*4, vy:Math.sin(a)*4-2, life:20, maxLife:20, r:3, color:'#67e8f9' });
+      }
+    });
+  }
+
+  if (newW < MIN_W) { flashMiss(swingBlock); endGame(); return; }
+
+  // Spawn cut-off chunk particles
+  if (!isPerfect) {
+    spawnCutParticles(sx, swingBlock.y, tw - newW, swingBlock.color, sx < top.x);
+    combo = 1;
+  } else {
+    combo = Math.min(combo + 1, 8);
+    spawnPerfectBurst(newX + newW/2, swingBlock.y);
+  }
+
+  // Score
+  const basePoints = 10 + level * 2;
+  const pts = isPerfect ? basePoints * 3 * combo : basePoints * combo;
+  score += pts;
+  const label = isPerfect ? `✨ Perfect! +${pts}` : `+${pts}`;
+  const col   = isPerfect ? '#fbbf24' : swingBlock.color;
+  floatingTexts.push({ x: newX+newW/2, y: swingBlock.y, text:label, color:col, life:55, maxLife:55 });
+
+  // Push new block
+  stack.push({ x:newX, w:newW, y:swingBlock.y, color:swingBlock.color });
+
+  level++;
+  speedMult += 0.04;
+
+  // Scroll camera: keep stack top visible
+  scrollCamera();
+
+  spawnSwing();
+  updateHUD();
+}
+
+function scrollCamera() {
+  const CH = canvas.height;
+  const topBlock = stack[stack.length-1];
+  // Target: top of stack should be at 35% from top
+  const targetY = CH * 0.35;
+  const currentTop = topBlock.y - cameraY;
+  if (currentTop < targetY) {
+    cameraY -= (targetY - currentTop);
+  }
+}
+
+function endGame() {
+  gameState = 'over';
+  cancelAnimationFrame(rafId);
+  if (score > hiScore) {
+    hiScore = score;
+    try { localStorage.setItem('towerHi', hiScore); } catch(_){}
+  }
+  document.getElementById('hiBadge').textContent = 'Best: '+hiScore;
+  document.getElementById('ovHiBadge').textContent = 'Best: '+hiScore;
+  document.getElementById('finalScore').textContent = 'Score: '+score+' · Level: '+level;
+  document.getElementById('finalScore').style.display = 'block';
+  document.querySelector('#overlay h2').textContent = level>=30?'🏆 Amazing!':level>=15?'⭐ Nice Tower!':'💥 Toppled!';
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────────
+function spawnCutParticles(sx, sy, cutW, color, leftSide) {
+  const cx = leftSide ? sx + cutW/2 : sx + swingBlock.w - cutW/2;
+  for (let i=0;i<12;i++) {
+    const a=Math.random()*Math.PI*2, sp=2+Math.random()*5;
+    particles.push({ x:cx, y:sy+BLOCK_H/2, vx:Math.cos(a)*sp+(leftSide?-2:2), vy:Math.sin(a)*sp-2, life:30+Math.random()*15, maxLife:45, r:3+Math.random()*3, color });
+  }
+}
+function spawnPerfectBurst(cx, cy) {
+  for (let i=0;i<20;i++) {
+    const a=(i/20)*Math.PI*2, sp=3+Math.random()*6;
+    const cols=['#fbbf24','#fff','#fde68a'];
+    particles.push({ x:cx, y:cy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-3, life:40, maxLife:40, r:4, color:cols[i%3] });
+  }
+}
+function flashMiss(blk) {
+  for (let i=0;i<20;i++) {
+    const a=Math.random()*Math.PI*2, sp=3+Math.random()*8;
+    particles.push({ x:blk.x+blk.w/2, y:blk.y+BLOCK_H/2, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-3, life:35, maxLife:35, r:5, color:'#ef4444' });
+  }
+  floatingTexts.push({ x:blk.x+blk.w/2, y:blk.y, text:'Miss!', color:'#ef4444', life:60, maxLife:60 });
+}
+
+// ── Update ─────────────────────────────────────────────────────────────────────
+function update() {
+  if (gameState !== 'playing') return;
+  frame++;
+
+  if (swingBlock.dropPhase) {
+    // Gravity-accelerated fall from the sky
+    swingBlock.dropVY += 0.9;
+    swingBlock.y += swingBlock.dropVY;
+
+    if (swingBlock.y >= swingBlock.targetY) {
+      // Landed — snap into place, spawn impact particles, start swinging
+      swingBlock.y = swingBlock.targetY;
+      swingBlock.dropPhase = false;
+
+      // Impact puff
+      const cx = swingBlock.x + swingBlock.w / 2;
+      for (let i = 0; i < 14; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 2 + Math.random() * 4;
+        particles.push({
+          x: cx, y: swingBlock.y + BLOCK_H,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3,
+          life: 25 + Math.random() * 10, maxLife: 35,
+          r: 3 + Math.random() * 2, color: swingBlock.color
+        });
+      }
+      // Screen shake effect (offset cameraY briefly)
+      _shakeFrames = 6; _shakeMag = Math.min(6, swingBlock.dropVY * 0.25);
+    }
+    // Update particles even during drop
+    particles = particles.filter(p=>p.life>0);
+    particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.3; p.vx*=0.95; p.life--; });
+    floatingTexts = floatingTexts.filter(t=>t.life>0);
+    floatingTexts.forEach(t=>{ t.y-=1; t.life--; });
+    // Don't move horizontally during drop
+    return;
+  }
+
+  // Move swinging block
+  swingBlock.x += swingBlock.speed * swingBlock.dir;
+  const CW = canvas.width;
+  if (swingBlock.x > CW + swingBlock.w*0.5) swingBlock.dir = -1;
+  if (swingBlock.x < -swingBlock.w*0.5)     swingBlock.dir = 1;
+
+  // Update swingBlock.y to follow stack top
+  swingBlock.y = stack[stack.length-1].y - BLOCK_H;
+
+  // Particles & texts
+  particles = particles.filter(p=>p.life>0);
+  particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.3; p.vx*=0.95; p.life--; });
+  floatingTexts = floatingTexts.filter(t=>t.life>0);
+  floatingTexts.forEach(t=>{ t.y-=1; t.life--; });
+}
+
+// screen shake state
+let _shakeFrames = 0, _shakeMag = 0;
+
+// ── Draw ───────────────────────────────────────────────────────────────────────
+function draw() {
+  const CW=canvas.width, CH=canvas.height;
+
+  // Screen shake
+  let shakeX = 0, shakeY = 0;
+  if (_shakeFrames > 0) {
+    shakeX = (Math.random()-0.5)*_shakeMag*2;
+    shakeY = (Math.random()-0.5)*_shakeMag;
+    _shakeFrames--;
+  }
+
+  // Background gradient sky
+  const sky = ctx.createLinearGradient(0,0,0,CH);
+  sky.addColorStop(0,'#030314'); sky.addColorStop(0.5,'#0a0a2e'); sky.addColorStop(1,'#0d0d20');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,CW,CH);
+
+  // Stars
+  ctx.save();
+  for (let i=0;i<80;i++) {
+    const sx=(i*137.5+17)%CW, sy=(i*79.3+3)%(CH*0.7);
+    const br=0.3+0.7*((Math.sin(frame*0.02+i)*0.5+0.5));
+    ctx.globalAlpha=br*0.6; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(sx,sy,0.8+i%2,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(shakeX, shakeY - cameraY);
+
+  // Draw stack
+  stack.forEach((blk, i) => {
+    const isBase = blk.base;
+    if (!isBase) {
+      // Shadow on block below
+      ctx.save(); ctx.globalAlpha=0.22; ctx.fillStyle='#000';
+      ctx.beginPath(); ctx.roundRect(blk.x+3, blk.y+BLOCK_H-4, blk.w, 8, 3); ctx.fill(); ctx.restore();
+    }
+    drawBlock(blk.x, blk.y, blk.w, BLOCK_H, blk.color, isBase);
+  });
+
+  if (swingBlock.dropPhase) {
+    // Clean drop - no trail indicators, pure apartment block falling from sky
+  } else {
+    // Swing block shadow on stack top
+    const top = stack[stack.length-1];
+    const overlapL2 = Math.max(swingBlock.x, top.x);
+    const overlapR2 = Math.min(swingBlock.x+swingBlock.w, top.x+top.w);
+    if (overlapR2 > overlapL2) {
+      ctx.save(); ctx.globalAlpha=0.18; ctx.fillStyle='#000';
+      ctx.fillRect(overlapL2, swingBlock.y+BLOCK_H-2, overlapR2-overlapL2, 6); ctx.restore();
+    }
+    // SNAP ZONE GLOW: when block is close to perfect alignment, show magnetic indicator
+    const snapDist = Math.abs(swingBlock.x - top.x);
+    if (snapDist < SNAP_ZONE) {
+      const snapIntensity = 1 - snapDist / SNAP_ZONE;
+      ctx.save();
+      ctx.globalAlpha = 0.12 + snapIntensity * 0.35;
+      ctx.shadowColor = '#67e8f9'; ctx.shadowBlur = 24 * snapIntensity;
+      ctx.strokeStyle = '#67e8f9'; ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 5]);
+      // Perfect landing zone outline
+      ctx.beginPath(); ctx.roundRect(top.x, swingBlock.y, top.w, BLOCK_H, 5); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.shadowBlur = 0;
+      // Snap strength indicator text
+      if (snapIntensity > 0.55) {
+        ctx.globalAlpha = snapIntensity * 0.9;
+        ctx.fillStyle = '#67e8f9';
+        ctx.font = `bold ${Math.round(10 + snapIntensity*6)}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#67e8f9'; ctx.shadowBlur = 10;
+        ctx.fillText('🧲 Snap!', top.x + top.w/2, swingBlock.y - 10);
+        ctx.shadowBlur = 0;
+      }
+      ctx.restore();
+    }
+    // Alignment guide (thin dashed line down from swingBlock center)
+    ctx.save();
+    ctx.setLineDash([4,6]); ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1.5;
+    const bcx=swingBlock.x+swingBlock.w/2;
+    ctx.beginPath(); ctx.moveTo(bcx, swingBlock.y+BLOCK_H); ctx.lineTo(bcx, top.y); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Draw swinging block (on top of trails)
+  drawBlock(swingBlock.x, swingBlock.y, swingBlock.w, BLOCK_H, swingBlock.color, false);
+
+  // Drop phase: NO preview arrows/indicators shown - player must judge timing
+  if (swingBlock.dropPhase) {
+    // Nothing - intentionally removed preview to match design requirement
+  }
+
+  // Particles
+  particles.forEach(p=>{
+    const a=p.life/p.maxLife; ctx.save(); ctx.globalAlpha=a;
+    ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*a+0.3,0,Math.PI*2); ctx.fill(); ctx.restore();
+  });
+
+  // Floating texts
+  floatingTexts.forEach(t=>{
+    const a=t.life/t.maxLife; ctx.save(); ctx.globalAlpha=a;
+    ctx.fillStyle=t.color; ctx.font='bold 16px system-ui'; ctx.textAlign='center';
+    ctx.shadowColor=t.color; ctx.shadowBlur=8;
+    ctx.fillText(t.text, t.x, t.y); ctx.restore();
+  });
+
+  ctx.restore(); // undo camera + shake translate
+
+  // Tower height indicator on right edge
+  const towerH = stack.length;
+  const barH = Math.min(CH*0.6, towerH*3);
+  ctx.save(); ctx.globalAlpha=0.5;
+  ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(CW-12,CH-barH-20,8,barH);
+  const lvPct=Math.min(1,towerH/50);
+  const barG=ctx.createLinearGradient(0,CH-barH*lvPct-20,0,CH-20);
+  barG.addColorStop(0,'#fbbf24'); barG.addColorStop(1,'#7c3aed');
+  ctx.fillStyle=barG; ctx.beginPath(); ctx.roundRect(CW-12,CH-barH*lvPct-20,8,barH*lvPct,3); ctx.fill();
+  ctx.restore();
+}
+
+function drawBlock(x, y, w, h, color, isBase) {
+  if (w <= 0) return;
+  // Main building body
+  const topG = ctx.createLinearGradient(x, y, x, y+h*0.4);
+  topG.addColorStop(0, lighten(color, 40)); topG.addColorStop(1, color);
+  ctx.fillStyle = isBase ? '#374151' : topG;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.fill();
+  // Apartment windows grid (only for non-base blocks)
+  if (!isBase && w > 40 && h > 50) {
+    const cols = Math.max(2, Math.floor(w / 28));
+    const rows = Math.max(2, Math.floor(h / 30));
+    const wPad = w * 0.12, hPad = h * 0.14;
+    const winW = (w - wPad*2) / cols * 0.55;
+    const winH = (h - hPad*2) / rows * 0.52;
+    const colStep = (w - wPad*2) / cols;
+    const rowStep = (h - hPad*2) / rows;
+    for (let ci = 0; ci < cols; ci++) {
+      for (let ri = 0; ri < rows; ri++) {
+        const wx = x + wPad + ci * colStep + colStep*0.22;
+        const wy = y + hPad + ri * rowStep + rowStep*0.24;
+        // Lit windows (glowing yellow/white)
+        const lit = ((ci * 3 + ri * 7 + Math.floor(frame/120)) % 5) !== 0;
+        ctx.save();
+        ctx.globalAlpha = lit ? 0.72 : 0.18;
+        ctx.fillStyle = lit ? '#fde68a' : '#1e293b';
+        ctx.beginPath(); ctx.roundRect(wx, wy, winW, winH, 1.5); ctx.fill();
+        if (lit) {
+          ctx.globalAlpha = 0.25;
+          ctx.shadowColor = '#fde68a'; ctx.shadowBlur = 6;
+          ctx.fillStyle = '#fde68a';
+          ctx.beginPath(); ctx.roundRect(wx, wy, winW, winH, 1.5); ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+        ctx.restore();
+      }
+    }
+  }
+  // Sheen highlight on top portion
+  if (!isBase && w > 20) {
+    ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.roundRect(x+3, y+2, Math.min(w-6, 60), h*0.3, 2); ctx.fill(); ctx.restore();
+  }
+  // Rooftop line (slightly lighter)
+  if (!isBase) {
+    ctx.save(); ctx.globalAlpha = 0.55;
+    ctx.fillStyle = lighten(color, 60);
+    ctx.beginPath(); ctx.roundRect(x, y, w, 6, [4, 4, 0, 0]); ctx.fill(); ctx.restore();
+  }
+  // Border
+  ctx.strokeStyle = isBase ? '#6b7280' : lighten(color, 70);
+  ctx.lineWidth=1.5; ctx.globalAlpha=0.4;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.stroke();
+  ctx.globalAlpha=1;
+}
+
+function lighten(hex, amt) {
+  try {
+    const n=parseInt(hex.slice(1),16);
+    const r=Math.min(255,(n>>16)+amt), g=Math.min(255,((n>>8)&0xff)+amt), b=Math.min(255,(n&0xff)+amt);
+    return `rgb(${r},${g},${b})`;
+  } catch(_){ return hex; }
+}
+
+// ── Loop ───────────────────────────────────────────────────────────────────────
+function loop() {
+  update(); draw();
+  if (gameState==='playing') rafId=requestAnimationFrame(loop);
+}
+
+// ── Input ──────────────────────────────────────────────────────────────────────
+canvas.addEventListener('click', drop);
+window.addEventListener('keydown', e => {
+  if (e.code==='Space'||e.code==='ArrowDown'){ e.preventDefault(); drop(); }
+});
+
+function updateHUD() {
+  document.getElementById('scoreBadge').textContent='Score: '+score;
+  document.getElementById('levelBadge').textContent='Level '+level;
+  document.getElementById('comboBadge').textContent='Combo ×'+combo;
+  document.getElementById('hiBadge').textContent='Best: '+hiScore;
+}
+
+document.getElementById('ovHiBadge').textContent='Best: '+hiScore;
+document.getElementById('hiBadge').textContent='Best: '+hiScore;
+
+async function goBack() {
+  try { const a=window.spaceAPI; if(a?.tabs){const ts=await a.tabs.list();const ac=ts.find(t=>t.isActive);if(ac){a.tabs.navigate(ac.id,'space://games');return;}} } catch(_){}
+  history.back();
+}
+</script>
+</body>
+</html>

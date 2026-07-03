@@ -1,0 +1,10 @@
+prefix=C:/Program Files/space_inference
+exec_prefix=C:/Program Files/space_inference
+libdir=C:/Program Files/space_inference/lib
+includedir=C:/Program Files/space_inference/include
+
+Name: llama
+Description: Port of Facebook's LLaMA model in C/C++
+Version: 0.0.1
+Libs: -L${libdir} -lggml -lggml-base -lllama
+Cflags: -I${includedir}

@@ -1,0 +1,194 @@
+/* Space Browser – Global Styles & Design System */
+
+/* ── CSS Custom Properties ──────────────────────────────────────────────── */
+:root {
+  /* ── Space browser palette (deep navy / cobalt blue) ── */
+  --color-bg-primary:    #0a0c10;
+  --color-bg-secondary:  #0e1117;
+  --color-bg-tertiary:   #141920;
+  --color-bg-hover:      #1a2235;
+  --color-bg-active:     #1f2d45;
+
+  --color-border:        rgba(37, 99, 235, 0.16);
+  --color-border-hover:  rgba(37, 99, 235, 0.42);
+
+  --color-accent:        #2563eb;
+  --color-accent-light:  #60a5fa;
+  --color-accent-dim:    rgba(37, 99, 235, 0.18);
+
+  --color-text-primary:  #e8eaf0;
+  --color-text-secondary:#8fa3b8;
+  --color-text-muted:    #4e5f70;
+
+  --color-success:       #34d399;
+  --color-warning:       #fbbf24;
+  --color-error:         #f97316;
+
+  /* ── Spaceship AI sidebar palette (amber / warm teal) ── */
+  /* Used exclusively in AISidebar and its child components.            */
+  /* Warm amber as primary accent, cool teal as secondary highlight.    */
+  --ship-bg-primary:     #0b0d0f;
+  --ship-bg-secondary:   #0f1215;
+  --ship-bg-tertiary:    #151a1f;
+  --ship-bg-hover:       #1c2430;
+  --ship-bg-active:      #213040;
+
+  --ship-border:         rgba(245, 158, 11, 0.16);
+  --ship-border-hover:   rgba(245, 158, 11, 0.40);
+
+  --ship-accent:         #d97706;       /* amber-600 */
+  --ship-accent-bright:  #f59e0b;       /* amber-400 */
+  --ship-accent-light:   #fcd34d;       /* amber-300 */
+  --ship-accent-dim:     rgba(217, 119, 6, 0.16);
+
+  --ship-teal:           #0d9488;       /* teal-600 */
+  --ship-teal-light:     #2dd4bf;       /* teal-300 */
+  --ship-teal-dim:       rgba(13, 148, 136, 0.16);
+
+  --ship-text-primary:   #e8ece8;
+  --ship-text-secondary: #8fa89a;
+  --ship-text-muted:     #4d6055;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.1s ease;
+  --transition-base: 0.2s ease;
+
+  /* Chrome heights */
+  --titlebar-height: 32px;
+  --tabbar-height: 34px;
+  --addressbar-height: 44px;
+  --chrome-height: 110px;  /* titlebar(32) + tabbar(34) + addressbar(44) */
+  --sidebar-width: 360px;
+}
+
+/* ── Light Theme ────────────────────────────────────────────────────────── */
+/* Applied via data-theme="light" on <html> by App.tsx on startup            */
+/* and broadcast to BrowserViews on pref change.                             */
+[data-theme="light"] {
+  /* Browser chrome palette – clean white / blue-grey */
+  --color-bg-primary:    #f0f2f5;
+  --color-bg-secondary:  #ffffff;
+  --color-bg-tertiary:   #e4e8ee;
+  --color-bg-hover:      #d8dfe8;
+  --color-bg-active:     #c8d3e0;
+
+  --color-border:        rgba(37, 99, 235, 0.14);
+  --color-border-hover:  rgba(37, 99, 235, 0.38);
+
+  --color-accent:        #2563eb;
+  --color-accent-light:  #1d4ed8;
+  --color-accent-dim:    rgba(37, 99, 235, 0.12);
+
+  --color-text-primary:  #111827;
+  --color-text-secondary:#374151;
+  --color-text-muted:    #6b7280;
+
+  --color-success:       #059669;
+  --color-warning:       #d97706;
+  --color-error:         #dc2626;
+
+  /* Spaceship sidebar stays dark regardless of browser theme */
+  --ship-bg-primary:     #0b0d0f;
+  --ship-bg-secondary:   #0f1215;
+  --ship-bg-tertiary:    #151a1f;
+  --ship-bg-hover:       #1c2430;
+  --ship-bg-active:      #213040;
+
+  --ship-border:         rgba(245, 158, 11, 0.16);
+  --ship-border-hover:   rgba(245, 158, 11, 0.40);
+
+  --ship-accent:         #d97706;
+  --ship-accent-bright:  #f59e0b;
+  --ship-accent-light:   #fcd34d;
+  --ship-accent-dim:     rgba(217, 119, 6, 0.16);
+
+  --ship-teal:           #0d9488;
+  --ship-teal-light:     #2dd4bf;
+  --ship-teal-dim:       rgba(13, 148, 136, 0.16);
+
+  --ship-text-primary:   #e8ece8;
+  --ship-text-secondary: #8fa89a;
+  --ship-text-muted:     #4d6055;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.3);
+  border-radius: var(--radius-full);
+  &:hover { background: rgba(37, 99, 235, 0.5); }
+}
+
+/* ── Selection ──────────────────────────────────────────────────────────── */
+::selection {
+  background: var(--color-accent-dim);
+  color: var(--color-text-primary);
+}
+
+/* ── Focus ring ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────── */
+a {
+  color: var(--color-accent-light);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+/* ── Utility: electron drag ─────────────────────────────────────────────── */
+.electron-drag {
+  -webkit-app-region: drag;
+  * { -webkit-app-region: no-drag; }
+}
+
+/* ── Code ────────────────────────────────────────────────────────────────── */
+code, pre {
+  font-family: var(--font-mono);
+}

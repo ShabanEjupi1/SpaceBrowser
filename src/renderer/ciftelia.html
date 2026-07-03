@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Çiftelia — Space</title>
+<style>
+  :root {
+    --bg:       #0c0a08;
+    --surface:  #13100c;
+    --card:     #1c1710;
+    --border:   #2e2418;
+    --accent:   #c2842a;
+    --accent2:  #e8b96a;
+    --text:     #f5f0e8;
+    --text-sec: #9a8a6a;
+    --fret-wood:#4a3420;
+    --neck-wood:#2c1f10;
+    --string1:  #d4c88a;
+    --string2:  #b8a870;
+    --active-fret: rgba(232,185,106,0.6);
+    --drone-color: rgba(139,92,246,0.7);
+    --note-glow: rgba(232,185,106,0.8);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Georgia', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    user-select: none;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .topbar-back {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); cursor: pointer; padding: 5px 10px; font-size: 13px;
+    font-family: system-ui; transition: background 0.12s;
+  }
+  .topbar-back:hover { background: var(--card); }
+  .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
+  .topbar-sub { font-size: 11px; color: var(--text-sec); }
+  .topbar-spacer { flex: 1; }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    gap: 18px;
+    padding: 20px;
+    width: 100%;
+    max-width: 1100px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ── Instrument area ── */
+  .instrument-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  /* ── The Çiftelia canvas ── */
+  #cifteliaCanvas {
+    border-radius: 12px;
+    cursor: pointer;
+    display: block;
+    box-shadow: 0 0 60px rgba(194,132,42,0.12), 0 4px 24px rgba(0,0,0,0.6);
+  }
+
+  /* ── Controls panel ── */
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 240px;
+    max-width: 280px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .card-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-sec);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: system-ui;
+  }
+
+  /* ── Volume ── */
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; font-family: system-ui; color: var(--text-sec);
+  }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    flex: 1; height: 4px;
+    background: var(--border); border-radius: 4px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--accent2); cursor: pointer;
+    box-shadow: 0 0 6px rgba(232,185,106,0.5);
+  }
+
+  /* ── Song buttons ── */
+  .song-list { display: flex; flex-direction: column; gap: 6px; }
+  .song-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.12s;
+    text-align: left;
+    font-family: system-ui;
+  }
+  .song-btn:hover { background: rgba(194,132,42,0.1); border-color: var(--accent); }
+  .song-btn.active { background: rgba(194,132,42,0.18); border-color: var(--accent2); }
+  .song-btn .song-icon { font-size: 16px; flex-shrink: 0; }
+  .song-btn .song-info { display: flex; flex-direction: column; }
+  .song-btn .song-name { font-weight: 600; font-size: 13px; }
+  .song-btn .song-sub  { font-size: 10px; color: var(--text-sec); margin-top: 1px; }
+
+  /* ── Current note display ── */
+  .note-display {
+    text-align: center;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(194,132,42,0.06);
+    border: 1px solid rgba(194,132,42,0.2);
+  }
+  .note-big {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--accent2);
+    text-shadow: 0 0 20px rgba(232,185,106,0.5);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    font-family: system-ui;
+  }
+  .note-name {
+    font-size: 13px;
+    color: var(--text-sec);
+    margin-top: 4px;
+    font-family: system-ui;
+  }
+
+  /* ── Playback control ── */
+  .playback-bar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .pb-btn {
+    flex: 1;
+    padding: 8px 6px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: system-ui;
+    font-weight: 600;
+  }
+  .pb-btn:hover { background: var(--card); }
+  .pb-btn.active { background: rgba(194,132,42,0.2); border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── Free play status ── */
+  .fp-status {
+    text-align: center; font-family: system-ui; font-size: 12px; color: var(--text-sec);
+    padding: 6px 0;
+  }
+
+  /* ── Tuning selector ── */
+  .tuning-row {
+    display: flex; gap: 6px; font-family: system-ui;
+  }
+  .tuning-btn {
+    flex: 1; padding: 6px 4px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-sec); font-size: 11px; cursor: pointer;
+    transition: all 0.12s; font-weight: 600; text-align: center;
+  }
+  .tuning-btn.active { background: rgba(194,132,42,0.15); border-color: var(--accent); color: var(--accent2); }
+
+  /* ── Song progress ── */
+  .song-progress {
+    font-family: system-ui; font-size: 11px; color: var(--text-sec);
+    text-align: center; margin-top: 4px;
+  }
+  .song-progress strong { color: var(--accent2); }
+
+  /* ── Info card ── */
+  .info-text {
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--text-sec);
+    font-family: system-ui;
+  }
+  .info-text strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <button class="topbar-back" onclick="goHome()">← Home</button>
+  <div>
+    <div class="topbar-title">🎸 Çiftelia</div>
+    <div class="topbar-sub">Traditional Albanian instrument simulator</div>
+  </div>
+  <div class="topbar-spacer"></div>
+</div>
+
+<!-- Main layout -->
+<div class="layout">
+
+  <!-- Instrument canvas -->
+  <div class="instrument-area">
+    <canvas id="cifteliaCanvas" width="480" height="680"></canvas>
+    <div class="fp-status" id="fpStatus">Click frets to play • Drag for vibrato</div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+
+    <!-- Note display -->
+    <div class="note-display">
+      <div class="note-big" id="noteDisplay">—</div>
+      <div class="note-name" id="noteName">No note</div>
+    </div>
+
+    <!-- Volume -->
+    <div class="card">
+      <div class="card-title">🔊 Volume & Reverb</div>
+      <div class="slider-row">
+        <span>Vol</span>
+        <input type="range" min="0" max="100" value="75" id="volSlider" oninput="setVolume(this.value)">
+        <span id="volLabel">75</span>
+      </div>
+      <div style="height:8px"></div>
+      <div class="slider-row">
+        <span>Rev</span>
+        <input type="range" min="0" max="100" value="30" id="revSlider" oninput="setReverb(this.value)">
+        <span id="revLabel">30</span>
+      </div>
+    </div>
+
+    <!-- Tuning -->
+    <div class="card">
+      <div class="card-title">🎵 Tuning</div>
+      <div class="tuning-row">
+        <button class="tuning-btn active" id="tuneStd" onclick="setTuning('standard')">Standard<br><span style="color:var(--accent2)">B3/E4</span></button>
+        <button class="tuning-btn" id="tuneHigh" onclick="setTuning('high')">High<br><span style="color:var(--accent2)">E4/A4</span></button>
+        <button class="tuning-btn" id="tuneLow" onclick="setTuning('low')">Low<br><span style="color:var(--accent2)">G3/C4</span></button>
+      </div>
+    </div>
+
+    <!-- Song player -->
+    <div class="card">
+      <div class="card-title">🎶 Traditional Songs</div>
+      <div class="song-list">
+        <button class="song-btn" id="songBtn0" onclick="selectSong(0)">
+          <span class="song-icon">🏔️</span>
+          <div class="song-info">
+            <span class="song-name">Shota</span>
+            <span class="song-sub">North Albanian folk dance</span>
+          </div>
+        </button>
+        <button class="song-btn" id="songBtn1" onclick="selectSong(1)">
+          <span class="song-icon">🌄</span>
+          <div class="song-info">
+            <span class="song-name">Valle e Tropojës</span>
+            <span class="song-sub">Tropojë valley dance</span>
+          </div>
+        </button>
+        <button class="song-btn" id="songBtn2" onclick="selectSong(2)">
+          <span class="song-icon">🕊️</span>
+          <div class="song-info">
+            <span class="song-name">Çamçakëz</span>
+            <span class="song-sub">Çam lyrical melody</span>
+          </div>
+        </button>
+        <button class="song-btn" id="songBtn3" onclick="selectSong(3)">
+          <span class="song-icon">⛰️</span>
+          <div class="song-info">
+            <span class="song-name">Moj e Bukura More</span>
+            <span class="song-sub">Classic Albanian serenade</span>
+          </div>
+        </button>
+        <button class="song-btn" id="songBtn4" onclick="selectSong(4)">
+          <span class="song-icon">🌙</span>
+          <div class="song-info">
+            <span class="song-name">Iso-Polyphony Drone</span>
+            <span class="song-sub">UNESCO heritage multi-voice</span>
+          </div>
+        </button>
+      </div>
+      <div style="height:10px"></div>
+      <div class="playback-bar">
+        <button class="pb-btn" id="btnPlay"  onclick="playSong()">▶ Play</button>
+        <button class="pb-btn" id="btnStop"  onclick="stopSong()">⏹ Stop</button>
+        <button class="pb-btn" id="btnLearn" onclick="toggleLearnMode()">📖 Learn</button>
+      </div>
+      <div class="song-progress" id="songProgress"></div>
+    </div>
+
+    <!-- About -->
+    <div class="card">
+      <div class="card-title">ℹ️ About Çiftelia</div>
+      <div class="info-text">
+        The <strong>Çiftelia</strong> (çif·tel·ia) is a traditional two-stringed Albanian instrument from the mountains of <strong>Gegënia</strong> — the northern highlands.<br><br>
+        It has one <strong>melody string</strong> (played with frets) and one <strong>drone string</strong> (open, continuous). The drone creates the characteristic buzzing resonance.<br><br>
+        Played at <strong>weddings, vallëzimi (folk dances)</strong> and epic singing (kënget e kreshnikëve).
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Audio context ─────────────────────────────────────────────────────────────
+let audioCtx = null;
+let masterGain = null;
+let reverbConvolver = null;
+let reverbGain = null;
+let dryGain = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.75;
+
+    // Simple reverb via convolver with impulse response
+    reverbConvolver = audioCtx.createConvolver();
+    reverbConvolver.buffer = makeImpulseResponse(audioCtx, 1.8, 3.5);
+    reverbGain = audioCtx.createGain();
+    reverbGain.gain.value = 0.3;
+    dryGain = audioCtx.createGain();
+    dryGain.gain.value = 0.85;
+
+    masterGain.connect(dryGain);
+    masterGain.connect(reverbConvolver);
+    reverbConvolver.connect(reverbGain);
+    dryGain.connect(audioCtx.destination);
+    reverbGain.connect(audioCtx.destination);
+  }
+  return audioCtx;
+}
+
+function makeImpulseResponse(ctx, duration, decay) {
+  const sampleRate = ctx.sampleRate;
+  const length = sampleRate * duration;
+  const impulse = ctx.createBuffer(2, length, sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const channelData = impulse.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+  return impulse;
+}
+
+// ─── Tunings ──────────────────────────────────────────────────────────────────
+// Note frequencies: A4 = 440 Hz
+// MIDI note -> frequency: 440 * 2^((n-69)/12)
+function midiToHz(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+const TUNINGS = {
+  standard: { melody: 64, drone: 59 }, // E4 / B3
+  high:     { melody: 69, drone: 64 }, // A4 / E4
+  low:      { melody: 60, drone: 55 }, // C4 / G3
+};
+
+let currentTuning = 'standard';
+let tuning = TUNINGS.standard;
+
+// Chromatic scale names
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function midiToName(midi) {
+  return NOTE_NAMES[midi % 12] + Math.floor(midi / 12 - 1);
+}
+
+// ─── Fret layout ──────────────────────────────────────────────────────────────
+// 13 frets (0 = open, 1-12 = frets)
+// Open melody = tuning.melody; each fret raises by 1 semitone
+const NUM_FRETS = 13; // 0 (nut) through 12
+
+// ─── Instrument dimensions on canvas ──────────────────────────────────────────
+const CW = 480, CH = 680;
+const BODY_TOP = 0.52;         // fraction of CH where body starts
+const NECK_LEFT = 0.38;        // fraction of CW
+const NECK_RIGHT = 0.62;       // fraction of CW
+const NECK_TOP = 0.04;         // top of neck
+const NECK_BOTTOM = BODY_TOP;  // bottom of neck = top of body
+
+// Fret positions (cosine spacing, like a real instrument)
+function getFretY(fretIndex) {
+  const topY = NECK_TOP * CH;
+  const bottomY = NECK_BOTTOM * CH - 20;
+  const scale = bottomY - topY;
+  // Each fret divides the remaining string length by 2^(1/12)
+  let pos = 0;
+  let remaining = scale;
+  for (let i = 0; i < fretIndex; i++) {
+    remaining = remaining / Math.pow(2, 1/12);
+    pos = scale - remaining;
+  }
+  return topY + pos;
+}
+
+// String X positions (2 strings)
+const STRING1_X = CW * 0.48; // melody string (left)
+const STRING2_X = CW * 0.52; // drone string (right)
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let activeFret = -1;          // currently pressed fret (-1 = none)
+let droneActive = false;
+let volume = 0.75;
+let reverbAmount = 0.30;
+let currentSong = null;
+let songPlaying = false;
+let learnMode = false;
+let learnStep = 0;
+let songInterval = null;
+let activeNoteNodes = [];
+
+// ─── Songs (note sequences as fret numbers for melody string) ─────────────────
+// Each note: { fret, duration(ms), label }
+// Fret -1 = rest
+const SONGS = [
+  {
+    name: 'Shota',
+    origin: 'North Albanian folk dance',
+    tempo: 140,
+    notes: [
+      // Opening phrase — characteristic jumping 4ths
+      {fret:0,dur:300},{fret:3,dur:300},{fret:5,dur:300},{fret:7,dur:600},
+      {fret:5,dur:300},{fret:3,dur:300},{fret:2,dur:300},{fret:0,dur:600},
+      {fret:3,dur:300},{fret:5,dur:300},{fret:7,dur:300},{fret:8,dur:600},
+      {fret:7,dur:300},{fret:5,dur:300},{fret:3,dur:300},{fret:2,dur:300},
+      {fret:0,dur:600},
+      // Second phrase — ascending run
+      {fret:0,dur:200},{fret:2,dur:200},{fret:3,dur:200},{fret:5,dur:200},
+      {fret:7,dur:200},{fret:8,dur:200},{fret:10,dur:200},{fret:12,dur:600},
+      {fret:10,dur:200},{fret:8,dur:200},{fret:7,dur:200},{fret:5,dur:200},
+      {fret:3,dur:200},{fret:2,dur:200},{fret:0,dur:600},
+      // Dance turn
+      {fret:5,dur:300},{fret:7,dur:300},{fret:5,dur:300},{fret:3,dur:300},
+      {fret:5,dur:600},{fret:3,dur:300},{fret:2,dur:300},{fret:0,dur:600},
+    ]
+  },
+  {
+    name: 'Valle e Tropojës',
+    origin: 'Tropojë valley dance',
+    tempo: 120,
+    notes: [
+      // Pentatonic feel of Highland Albania
+      {fret:2,dur:400},{fret:5,dur:400},{fret:7,dur:400},{fret:9,dur:800},
+      {fret:7,dur:400},{fret:5,dur:400},{fret:2,dur:400},{fret:0,dur:800},
+      {fret:5,dur:400},{fret:7,dur:400},{fret:9,dur:400},{fret:7,dur:400},
+      {fret:5,dur:400},{fret:4,dur:400},{fret:2,dur:800},
+      {fret:0,dur:400},{fret:2,dur:400},{fret:4,dur:400},{fret:5,dur:400},
+      {fret:7,dur:400},{fret:9,dur:800},
+      {fret:7,dur:400},{fret:5,dur:400},{fret:4,dur:400},{fret:2,dur:400},
+      {fret:0,dur:1200},
+    ]
+  },
+  {
+    name: 'Çamçakëz',
+    origin: 'Çam lyrical melody',
+    tempo: 80,
+    notes: [
+      // Slow lyrical, Çam Albanians of NW Greece, minor feel
+      {fret:3,dur:600},{fret:5,dur:600},{fret:8,dur:600},{fret:7,dur:600},
+      {fret:5,dur:600},{fret:3,dur:600},{fret:2,dur:600},{fret:0,dur:1200},
+      {fret:0,dur:600},{fret:3,dur:600},{fret:5,dur:600},{fret:7,dur:600},
+      {fret:8,dur:600},{fret:10,dur:600},{fret:8,dur:600},{fret:7,dur:1200},
+      {fret:5,dur:600},{fret:7,dur:600},{fret:8,dur:600},{fret:7,dur:600},
+      {fret:5,dur:600},{fret:3,dur:600},{fret:2,dur:600},{fret:0,dur:1200},
+    ]
+  },
+  {
+    name: 'Moj e Bukura More',
+    origin: 'Classic Albanian serenade',
+    tempo: 100,
+    notes: [
+      // One of the most famous Albanian folk songs
+      {fret:0,dur:400},{fret:3,dur:400},{fret:5,dur:400},{fret:7,dur:400},
+      {fret:5,dur:400},{fret:3,dur:800},{fret:5,dur:400},{fret:7,dur:400},
+      {fret:8,dur:400},{fret:7,dur:400},{fret:5,dur:800},
+      {fret:3,dur:400},{fret:5,dur:400},{fret:7,dur:400},{fret:5,dur:400},
+      {fret:3,dur:400},{fret:2,dur:400},{fret:0,dur:800},
+      {fret:0,dur:400},{fret:2,dur:400},{fret:3,dur:400},{fret:5,dur:400},
+      {fret:3,dur:400},{fret:2,dur:400},{fret:0,dur:1200},
+      {fret:5,dur:400},{fret:7,dur:400},{fret:8,dur:400},{fret:10,dur:400},
+      {fret:8,dur:400},{fret:7,dur:400},{fret:5,dur:800},
+      {fret:3,dur:400},{fret:5,dur:400},{fret:3,dur:400},{fret:2,dur:400},
+      {fret:0,dur:1200},
+    ]
+  },
+  {
+    name: 'Iso-Polyphony Drone',
+    origin: 'UNESCO heritage multi-voice',
+    tempo: 70,
+    notes: [
+      // Iso-polyphony: sustained notes with drone — slow, ceremonial
+      {fret:0,dur:1200},{fret:3,dur:800},{fret:5,dur:1200},
+      {fret:3,dur:800},{fret:2,dur:600},{fret:0,dur:1600},
+      {fret:7,dur:1200},{fret:5,dur:800},{fret:3,dur:1200},
+      {fret:5,dur:800},{fret:7,dur:600},{fret:8,dur:1600},
+      {fret:7,dur:1200},{fret:5,dur:800},{fret:3,dur:1200},
+      {fret:2,dur:800},{fret:0,dur:2000},
+    ]
+  }
+];
+
+let currentSongIdx = -1;
+
+// ─── Canvas drawing ───────────────────────────────────────────────────────────
+const canvas = document.getElementById('cifteliaCanvas');
+const ctx = canvas.getContext('2d');
+
+function render() {
+  ctx.clearRect(0, 0, CW, CH);
+  drawBody();
+  drawNeck();
+  drawFrets();
+  drawStrings();
+  drawFretMarkers();
+  drawActiveHighlight();
+  drawNoteLabels();
+  // Show learn arrow whenever learn mode is on and a song is selected,
+  // regardless of whether song is currently playing
+  if (learnMode && currentSongIdx >= 0) {
+    drawLearnArrow();
+  }
+}
+
+function drawBody() {
+  const bTop = BODY_TOP * CH;
+  const bodyH = CH - bTop;
+
+  // Real çiftelia has a small pear-shaped (piriform) body, much narrower than a guitar
+  // Body width is only ~60% of canvas width, centered
+  const bodyW = CW * 0.54;
+  const bLeft = (CW - bodyW) / 2;
+  const bRight = bLeft + bodyW;
+
+  // Body shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 30;
+
+  // Main body — small pear / piriform shape (narrow top, wider waist, rounded base)
+  ctx.beginPath();
+  // Start from top-left of body join with neck
+  ctx.moveTo(bLeft + bodyW*0.08, bTop);
+  // Left upper curve (narrow upper bout)
+  ctx.bezierCurveTo(
+    bLeft - bodyW*0.04, bTop + bodyH*0.15,
+    bLeft - bodyW*0.02, bTop + bodyH*0.32,
+    bLeft + bodyW*0.05, bTop + bodyH*0.48
+  );
+  // Left lower curve (wider lower bout)
+  ctx.bezierCurveTo(
+    bLeft - bodyW*0.06, bTop + bodyH*0.60,
+    bLeft + bodyW*0.02, bTop + bodyH*0.88,
+    bLeft + bodyW*0.28, bTop + bodyH*0.97
+  );
+  // Bottom rounded
+  ctx.bezierCurveTo(
+    bLeft + bodyW*0.40, bTop + bodyH*1.01,
+    bLeft + bodyW*0.60, bTop + bodyH*1.01,
+    bLeft + bodyW*0.72, bTop + bodyH*0.97
+  );
+  // Right lower curve
+  ctx.bezierCurveTo(
+    bRight + bodyW*0.02, bTop + bodyH*0.88,
+    bRight + bodyW*0.06, bTop + bodyH*0.60,
+    bRight - bodyW*0.05, bTop + bodyH*0.48
+  );
+  // Right upper curve
+  ctx.bezierCurveTo(
+    bRight + bodyW*0.02, bTop + bodyH*0.32,
+    bRight + bodyW*0.04, bTop + bodyH*0.15,
+    bRight - bodyW*0.08, bTop
+  );
+  ctx.closePath();
+
+  const bodyGrad = ctx.createRadialGradient(CW*0.5, bTop + bodyH*0.50, 10, CW*0.5, bTop+bodyH*0.50, bodyH*0.6);
+  bodyGrad.addColorStop(0, '#8b4a1f');
+  bodyGrad.addColorStop(0.45, '#5c2e0e');
+  bodyGrad.addColorStop(1, '#2a1208');
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Wood grain lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const gx = bLeft + bodyW*0.2 + i * bodyW * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(gx, bTop + bodyH*0.05);
+    ctx.lineTo(gx + bodyW * 0.015, bTop + bodyH * 0.85);
+    ctx.stroke();
+  }
+
+  // Binding edge
+  ctx.strokeStyle = 'rgba(232,185,106,0.45)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bLeft + bodyW*0.08, bTop);
+  ctx.bezierCurveTo(bLeft - bodyW*0.04, bTop + bodyH*0.15, bLeft - bodyW*0.02, bTop + bodyH*0.32, bLeft + bodyW*0.05, bTop + bodyH*0.48);
+  ctx.bezierCurveTo(bLeft - bodyW*0.06, bTop + bodyH*0.60, bLeft + bodyW*0.02, bTop + bodyH*0.88, bLeft + bodyW*0.28, bTop + bodyH*0.97);
+  ctx.bezierCurveTo(bLeft + bodyW*0.40, bTop + bodyH*1.01, bLeft + bodyW*0.60, bTop + bodyH*1.01, bLeft + bodyW*0.72, bTop + bodyH*0.97);
+  ctx.bezierCurveTo(bRight + bodyW*0.02, bTop + bodyH*0.88, bRight + bodyW*0.06, bTop + bodyH*0.60, bRight - bodyW*0.05, bTop + bodyH*0.48);
+  ctx.bezierCurveTo(bRight + bodyW*0.02, bTop + bodyH*0.32, bRight + bodyW*0.04, bTop + bodyH*0.15, bRight - bodyW*0.08, bTop);
+  ctx.stroke();
+
+  // Round sound hole — çiftelia has a small circular rose hole
+  const sholeX = CW * 0.5;
+  const sholeY = bTop + bodyH * 0.35;
+  const sholeR = bodyW * 0.12;
+  ctx.fillStyle = 'rgba(0,0,0,0.88)';
+  ctx.beginPath();
+  ctx.arc(sholeX, sholeY, sholeR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232,185,106,0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(sholeX, sholeY, sholeR, 0, Math.PI * 2);
+  ctx.stroke();
+  // Rosette decorative rings
+  for (let i = 1; i <= 4; i++) {
+    ctx.strokeStyle = `rgba(232,185,106,${0.10 + i*0.07})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(sholeX, sholeY, sholeR + i*4, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Bridge — çiftelia bridge is narrow and sits low on the body
+  const bridgeY = bTop + bodyH * 0.60;
+  ctx.fillStyle = '#120904';
+  ctx.beginPath();
+  ctx.roundRect(CW*0.40, bridgeY, CW*0.20, 9, 3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232,185,106,0.28)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(CW*0.40, bridgeY, CW*0.20, 9);
+
+  // Tailpiece at bottom
+  const tailY = bTop + bodyH * 0.88;
+  ctx.fillStyle = '#1a0e06';
+  ctx.beginPath();
+  ctx.roundRect(CW*0.42, tailY, CW*0.16, 14, 4);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232,185,106,0.2)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(CW*0.42, tailY, CW*0.16, 14);
+}
+
+function drawNeck() {
+  const topY = NECK_TOP * CH;
+  const botY = BODY_TOP * CH;
+  const leftX = NECK_LEFT * CW;
+  const rightX = NECK_RIGHT * CW;
+
+  // Neck gradient (wood)
+  const neckGrad = ctx.createLinearGradient(leftX, 0, rightX, 0);
+  neckGrad.addColorStop(0, '#1e1208');
+  neckGrad.addColorStop(0.3, '#3d2410');
+  neckGrad.addColorStop(0.5, '#5a3618');
+  neckGrad.addColorStop(0.7, '#3d2410');
+  neckGrad.addColorStop(1, '#1e1208');
+
+  ctx.fillStyle = neckGrad;
+  ctx.beginPath();
+  ctx.moveTo(leftX, topY);
+  ctx.lineTo(rightX, topY);
+  ctx.lineTo(rightX + 4, botY);
+  ctx.lineTo(leftX - 4, botY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Neck binding
+  ctx.strokeStyle = 'rgba(232,185,106,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(leftX, topY); ctx.lineTo(leftX - 4, botY); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(rightX, topY); ctx.lineTo(rightX + 4, botY); ctx.stroke();
+
+  // Nut at the top
+  ctx.fillStyle = '#d4c8a0';
+  ctx.fillRect(leftX - 2, topY - 4, rightX - leftX + 4, 5);
+
+  // Headstock
+  const hsW = (rightX - leftX) * 1.3;
+  const hsLeft = (CW - hsW) / 2;
+  ctx.fillStyle = '#2c1a08';
+  ctx.beginPath();
+  ctx.roundRect(hsLeft, 0, hsW, topY + 8, [0,0,6,6]);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232,185,106,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(hsLeft, 0, hsW, topY + 8, [0,0,6,6]);
+  ctx.stroke();
+
+  // Tuning pegs
+  const pegY = [8, 20, 32];
+  [CW*0.38, CW*0.62].forEach((px, si) => {
+    pegY.forEach(py => {
+      ctx.fillStyle = '#8b7355';
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI*2); ctx.stroke();
+    });
+  });
+}
+
+function drawFrets() {
+  for (let f = 1; f < NUM_FRETS; f++) {
+    const y = getFretY(f);
+    const leftX = (NECK_LEFT - 0.02) * CW;
+    const rightX = (NECK_RIGHT + 0.02) * CW;
+
+    // Fret wire
+    const alpha = activeFret === f ? 0.9 : 0.45;
+    ctx.strokeStyle = `rgba(200,180,130,${alpha})`;
+    ctx.lineWidth = activeFret === f ? 3 : 1.5;
+    ctx.beginPath();
+    ctx.moveTo(leftX, y);
+    ctx.lineTo(rightX, y);
+    ctx.stroke();
+
+    // Fret highlight if in learn mode
+    if (learnMode && songPlaying && currentSongIdx >= 0) {
+      const song = SONGS[currentSongIdx];
+      const curNote = song.notes[learnStep % song.notes.length];
+      if (curNote && curNote.fret === f) {
+        ctx.fillStyle = 'rgba(232,185,106,0.12)';
+        const prevY = f > 1 ? getFretY(f-1) : NECK_TOP * CH;
+        ctx.fillRect(leftX, prevY, rightX - leftX, y - prevY);
+      }
+    }
+  }
+}
+
+function drawStrings() {
+  const topY = NECK_TOP * CH;
+  const botY = BODY_TOP * CH + 12; // goes to bridge
+
+  [STRING1_X, STRING2_X].forEach((sx, si) => {
+    const isActive = si === 0 ? activeFret >= 0 : droneActive;
+    const col = si === 0 ? 'rgba(212,200,138,0.9)' : 'rgba(139,92,246,0.7)';
+
+    // String glow when playing
+    if (isActive) {
+      ctx.shadowColor = si === 0 ? 'rgba(232,185,106,0.8)' : 'rgba(139,92,246,0.6)';
+      ctx.shadowBlur = 8;
+    }
+
+    ctx.strokeStyle = col;
+    ctx.lineWidth = si === 0 ? 1.5 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(sx, topY - 8);
+    ctx.lineTo(sx, botY);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Vibration animation when active
+    if (isActive) {
+      const amp = 2 * Math.sin(Date.now() * 0.02);
+      ctx.strokeStyle = si === 0 ? 'rgba(232,185,106,0.4)' : 'rgba(139,92,246,0.3)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      for (let y = topY; y < botY; y += 4) {
+        const t = (y - topY) / (botY - topY);
+        const wave = amp * Math.sin(t * Math.PI * 6) * Math.sin(t * Math.PI);
+        if (y === topY) ctx.moveTo(sx + wave, y);
+        else ctx.lineTo(sx + wave, y);
+      }
+      ctx.stroke();
+    }
+  });
+}
+
+function drawFretMarkers() {
+  // Traditional inlay positions: 3, 5, 7, 9, 12
+  const markerFrets = [3, 5, 7, 9, 12];
+  markerFrets.forEach(f => {
+    if (f >= NUM_FRETS) return;
+    const y1 = f > 0 ? getFretY(f-1) : NECK_TOP * CH;
+    const y2 = getFretY(f);
+    const midY = (y1 + y2) / 2;
+    const midX = CW * 0.5;
+
+    ctx.fillStyle = f === 12 ? 'rgba(232,185,106,0.6)' : 'rgba(200,180,130,0.35)';
+    if (f === 12) {
+      // Double dot
+      ctx.beginPath(); ctx.arc(midX - 8, midY, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(midX + 8, midY, 4, 0, Math.PI*2); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(midX, midY, 4, 0, Math.PI*2); ctx.fill();
+    }
+  });
+}
+
+function drawActiveHighlight() {
+  if (activeFret < 0) return;
+  const f = activeFret;
+  const topY = f > 0 ? getFretY(f-1) : NECK_TOP * CH;
+  const botY = getFretY(f);
+  const leftX = NECK_LEFT * CW - 2;
+  const rightX = NECK_RIGHT * CW + 2;
+
+  ctx.fillStyle = 'rgba(232,185,106,0.22)';
+  ctx.fillRect(leftX, topY, rightX - leftX, botY - topY);
+
+  // String press indicator
+  ctx.shadowColor = 'rgba(232,185,106,0.9)';
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = 'rgba(232,185,106,0.9)';
+  ctx.beginPath();
+  ctx.arc(STRING1_X, (topY + botY) / 2, 7, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function drawNoteLabels() {
+  const topY = NECK_TOP * CH;
+  ctx.font = '9px system-ui';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(154,138,106,0.6)';
+  for (let f = 0; f < NUM_FRETS; f++) {
+    const botY = getFretY(Math.min(f + 1, NUM_FRETS - 1));
+    const labelY = f === 0 ? topY + (botY - topY) * 0.5 : (getFretY(f) + botY) / 2;
+    const midiNote = tuning.melody + f;
+    ctx.fillText(midiToName(midiNote), NECK_LEFT * CW - 5, labelY + 3);
+  }
+  ctx.textAlign = 'left';
+  // Fret numbers
+  for (let f = 1; f < NUM_FRETS; f++) {
+    const y = getFretY(f);
+    const prevY = f > 1 ? getFretY(f-1) : NECK_TOP * CH;
+    ctx.fillStyle = 'rgba(154,138,106,0.4)';
+    ctx.font = '8px system-ui';
+    ctx.fillText(String(f), NECK_RIGHT * CW + 6, (y + prevY) / 2 + 3);
+  }
+}
+
+function drawLearnArrow() {
+  if (currentSongIdx < 0) return;
+  const song = SONGS[currentSongIdx];
+  // Show the current step note when playing, or first note when idle
+  const noteIdx = songPlaying ? (learnStep % song.notes.length) : 0;
+  const note = song.notes[noteIdx];
+  if (!note || note.fret < 0) return;
+  const f = note.fret;
+  const topY = f > 0 ? getFretY(f - 1) : NECK_TOP * CH;
+  const botY = f < NUM_FRETS - 1 ? getFretY(f) : NECK_BOTTOM * CH;
+  const midY = (topY + botY) / 2;
+
+  // Arrow pointing LEFT (►) from the right side of the neck toward the fret
+  const arrowX = NECK_RIGHT * CW + 36; // to the right of the neck
+  const pulse = 0.55 + 0.45 * Math.sin(Date.now() * 0.005);
+
+  // Draw pulsing arrow from right pointing left toward the fret
+  ctx.save();
+  ctx.globalAlpha = pulse;
+
+  // Background badge for readability
+  ctx.fillStyle = 'rgba(15,10,4,0.75)';
+  ctx.beginPath();
+  ctx.roundRect(NECK_RIGHT * CW + 6, midY - 15, 60, 30, 8);
+  ctx.fill();
+
+  // Arrow icon (pointing LEFT = ◀ toward the string)
+  ctx.fillStyle = '#e8b96a';
+  ctx.font = 'bold 18px system-ui';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(232,185,106,0.8)';
+  ctx.shadowBlur = 10;
+  ctx.fillText('◀ ' + f, NECK_RIGHT * CW + 10, midY);
+  ctx.shadowBlur = 0;
+
+  // Also draw a horizontal guide line from arrow to the fret area
+  ctx.strokeStyle = `rgba(232,185,106,${pulse * 0.5})`;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(NECK_RIGHT * CW + 6, midY);
+  ctx.lineTo(NECK_RIGHT * CW + 2, midY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+
+  // Also draw a bright highlight band on the target fret area
+  const leftX = NECK_LEFT * CW - 2;
+  const rightX = NECK_RIGHT * CW + 2;
+  ctx.save();
+  ctx.globalAlpha = 0.18 * pulse;
+  ctx.fillStyle = '#e8b96a';
+  ctx.fillRect(leftX, topY, rightX - leftX, botY - topY);
+  ctx.restore();
+}
+
+// Animation loop
+let animFrame;
+function animLoop() {
+  render();
+  animFrame = requestAnimationFrame(animLoop);
+}
+animLoop();
+
+// ─── Canvas interaction ───────────────────────────────────────────────────────
+canvas.addEventListener('mousedown', handleCanvasClick);
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  handleCanvasClickXY(t.clientX - rect.left, t.clientY - rect.top);
+}, { passive: false });
+
+function handleCanvasClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = CW / rect.width;
+  const scaleY = CH / rect.height;
+  handleCanvasClickXY((e.clientX - rect.left)*scaleX, (e.clientY - rect.top)*scaleY);
+}
+
+function handleCanvasClickXY(px, py) {
+  getAudioCtx().resume();
+  const topY = NECK_TOP * CH;
+  const botY = NECK_BOTTOM * CH;
+  const leftX = (NECK_LEFT - 0.06) * CW;
+  const rightX = (NECK_RIGHT + 0.06) * CW;
+
+  // Check if clicking on neck/frets area
+  if (px >= leftX && px <= rightX && py >= topY && py <= botY) {
+    // Find which fret
+    for (let f = NUM_FRETS - 1; f >= 0; f--) {
+      const fretTopY = f > 0 ? getFretY(f-1) : topY;
+      const fretBotY = getFretY(Math.min(f, NUM_FRETS-1));
+      if (py >= fretTopY && py <= fretBotY) {
+        pressedFret(f);
+        return;
+      }
+    }
+  }
+
+  // Clicking open drone string area / body = play drone
+  if (px >= (NECK_LEFT - 0.06) * CW && px <= (NECK_RIGHT + 0.06) * CW && py >= botY) {
+    playDrone();
+  }
+}
+
+canvas.addEventListener('mouseup', () => releaseFret());
+canvas.addEventListener('mouseleave', () => releaseFret());
+canvas.addEventListener('touchend', () => releaseFret());
+
+function pressedFret(fret) {
+  activeFret = fret;
+  droneActive = true;
+  const midiNote = tuning.melody + fret;
+  const freqMelody = midiToHz(midiNote);
+  const freqDrone = midiToHz(tuning.drone);
+  playNote(freqMelody, 0.7);
+  playNote(freqDrone, 0.3, true);
+  showNoteUI(midiNote, fret);
+}
+
+function releaseFret() {
+  activeFret = -1;
+  droneActive = false;
+}
+
+function playDrone() {
+  droneActive = true;
+  const midiNote = tuning.drone;
+  playNote(midiToHz(midiNote), 0.5, true);
+  showNoteUI(midiNote, -1);
+  setTimeout(() => droneActive = false, 600);
+}
+
+// ─── Audio synthesis ──────────────────────────────────────────────────────────
+function playNote(freq, velScale = 1.0, isDrone = false) {
+  const ctx2 = getAudioCtx();
+  const now = ctx2.currentTime;
+  const dur = isDrone ? 1.0 : 0.8;
+
+  // Karplus-Strong-inspired plucked string
+  const osc = ctx2.createOscillator();
+  const env = ctx2.createGain();
+  const filter = ctx2.createBiquadFilter();
+
+  osc.type = 'sawtooth';
+  osc.frequency.value = freq;
+  // Add slight detuning for character
+  const osc2 = ctx2.createOscillator();
+  osc2.type = 'triangle';
+  osc2.frequency.value = freq * 1.003;
+
+  const env2 = ctx2.createGain();
+  env2.gain.setValueAtTime(0, now);
+  env2.gain.linearRampToValueAtTime(0.3 * velScale * volume, now + 0.004);
+  env2.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.9);
+
+  filter.type = 'lowpass';
+  filter.frequency.value = isDrone ? freq * 3 : freq * 5;
+  filter.Q.value = isDrone ? 2 : 1;
+
+  env.gain.setValueAtTime(0, now);
+  env.gain.linearRampToValueAtTime(0.6 * velScale * volume, now + 0.005);
+  env.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+  osc.connect(filter);
+  filter.connect(env);
+  env.connect(masterGain);
+
+  osc2.connect(env2);
+  env2.connect(masterGain);
+
+  osc.start(now);
+  osc2.start(now);
+  osc.stop(now + dur + 0.1);
+  osc2.stop(now + dur + 0.1);
+
+  const token = { osc, osc2, env, env2 };
+  activeNoteNodes.push(token);
+  setTimeout(() => {
+    activeNoteNodes = activeNoteNodes.filter(n => n !== token);
+  }, (dur + 0.2) * 1000);
+}
+
+function showNoteUI(midiNote, fret) {
+  const name = midiToName(midiNote);
+  document.getElementById('noteDisplay').textContent = name;
+  document.getElementById('noteName').textContent = fret >= 0
+    ? `Fret ${fret} · Melody String`
+    : 'Open · Drone String';
+}
+
+// ─── Tuning ───────────────────────────────────────────────────────────────────
+function setTuning(t) {
+  currentTuning = t;
+  tuning = TUNINGS[t];
+  document.getElementById('tuneStd').classList.toggle('active', t==='standard');
+  document.getElementById('tuneHigh').classList.toggle('active', t==='high');
+  document.getElementById('tuneLow').classList.toggle('active', t==='low');
+  document.getElementById('noteDisplay').textContent = '—';
+  document.getElementById('noteName').textContent = 'Tuning changed';
+}
+
+// ─── Volume / Reverb ──────────────────────────────────────────────────────────
+function setVolume(v) {
+  volume = v / 100;
+  document.getElementById('volLabel').textContent = v;
+  if (masterGain) masterGain.gain.value = volume;
+}
+function setReverb(v) {
+  reverbAmount = v / 100;
+  document.getElementById('revLabel').textContent = v;
+  if (reverbGain) reverbGain.gain.value = reverbAmount;
+  if (dryGain) dryGain.gain.value = 1 - reverbAmount * 0.5;
+}
+
+// ─── Song selection ───────────────────────────────────────────────────────────
+function selectSong(idx) {
+  currentSongIdx = idx;
+  for (let i=0;i<SONGS.length;i++) {
+    document.getElementById('songBtn'+i).classList.toggle('active', i===idx);
+  }
+  stopSong();
+  document.getElementById('songProgress').textContent = `Selected: ${SONGS[idx].name} (${SONGS[idx].notes.length} notes)`;
+}
+
+function playSong() {
+  if (currentSongIdx < 0) {
+    selectSong(0);
+  }
+  stopSong();
+  songPlaying = true;
+  learnStep = 0;
+  document.getElementById('btnPlay').classList.add('active');
+  playNextNote();
+}
+
+function playNextNote() {
+  if (!songPlaying || currentSongIdx < 0) return;
+  const song = SONGS[currentSongIdx];
+  if (learnStep >= song.notes.length) {
+    // Loop
+    learnStep = 0;
+  }
+  const note = song.notes[learnStep];
+  if (note.fret >= 0) {
+    activeFret = note.fret;
+    droneActive = true;
+    const midiNote = tuning.melody + note.fret;
+    playNote(midiToHz(midiNote), 0.8);
+    playNote(midiToHz(tuning.drone), 0.25, true);
+    showNoteUI(midiNote, note.fret);
+  } else {
+    activeFret = -1;
+    droneActive = false;
+  }
+
+  const progress = `${learnStep + 1} / ${song.notes.length}  —  ${song.name}`;
+  document.getElementById('songProgress').textContent = progress;
+
+  learnStep++;
+  songInterval = setTimeout(playNextNote, note.dur);
+}
+
+function stopSong() {
+  songPlaying = false;
+  if (songInterval) { clearTimeout(songInterval); songInterval = null; }
+  activeFret = -1;
+  droneActive = false;
+  document.getElementById('btnPlay').classList.remove('active');
+  document.getElementById('songProgress').textContent = currentSongIdx >= 0
+    ? `Stopped — ${SONGS[currentSongIdx].name}`
+    : '';
+}
+
+function toggleLearnMode() {
+  learnMode = !learnMode;
+  document.getElementById('btnLearn').classList.toggle('active', learnMode);
+  document.getElementById('fpStatus').textContent = learnMode
+    ? '📖 Learn mode — follow the arrows!'
+    : 'Click frets to play • Drag for vibrato';
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function goHome() {
+  stopSong();
+  try { window.spaceAPI.tabs.navigate(null, 'space://games'); } catch(_) { history.back(); }
+}
+
+// ─── Keyboard support ─────────────────────────────────────────────────────────
+const KEY_FRETS = {
+  'a':0,'s':1,'d':2,'f':3,'g':4,'h':5,'j':6,'k':7,'l':8,
+  'z':9,'x':10,'c':11,'v':12
+};
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const fret = KEY_FRETS[e.key.toLowerCase()];
+  if (fret !== undefined) {
+    getAudioCtx().resume();
+    pressedFret(fret);
+  }
+  if (e.key === ' ') { e.preventDefault(); playDrone(); }
+});
+document.addEventListener('keyup', e => {
+  if (KEY_FRETS[e.key.toLowerCase()] !== undefined) releaseFret();
+});
+
+// Keyboard hint
+document.getElementById('fpStatus').title = 'Keys: A=open, S=fret1, D=fret2... SPACE=drone';
+</script>
+</body>
+</html>

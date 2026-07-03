@@ -1,0 +1,732 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Box Head Zombies – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:#080808; display:flex; flex-direction:column; align-items:stretch;
+      height:100vh; font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    .header {
+      width:100%; display:flex; align-items:center; gap:12px;
+      padding:8px 20px; background:#0d0d0d;
+      border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0; height:46px;
+    }
+    .back-btn {
+      background:#161616; border:1px solid rgba(255,255,255,0.07);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:5px 12px;
+      cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.15s;
+    }
+    .back-btn:hover { color:#e8e8f0; border-color:rgba(239,68,68,0.4); }
+    .info-row { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:12px; }
+    .badge {
+      background:#161616; border:1px solid rgba(255,255,255,0.07);
+      border-radius:6px; padding:4px 12px; font-weight:700;
+    }
+    canvas { display:block; flex:1; }
+    #overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.85);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+      z-index:10;
+    }
+    #overlay h2 { font-size:30px; text-shadow:0 0 20px rgba(239,68,68,0.6); }
+    #overlay .sub { font-size:14px; color:#8888aa; max-width:420px; text-align:center; }
+    #overlay .ctrl-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:8px 32px;
+      font-size:12px; color:#aaaacc; background:#111; padding:14px 24px;
+      border-radius:10px; border:1px solid rgba(255,255,255,0.07);
+    }
+    #overlay button {
+      background:#dc2626; border:none; border-radius:9px;
+      color:#fff; font-size:16px; font-weight:700; letter-spacing:0.5px;
+      padding:13px 40px; cursor:pointer; margin-top:4px; transition:background 0.15s;
+    }
+    #overlay button:hover { background:#b91c1c; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:15px;font-weight:700;">🧟 Box Head Zombies</span>
+  <div class="info-row">
+    <div class="badge">Wave <span id="waveEl">1</span></div>
+    <div class="badge" style="color:#60a5fa">P1: <span id="hp1El">100</span>HP &nbsp;⭐<span id="sc1El">0</span></div>
+    <div class="badge" style="color:#4ade80">P2: <span id="hp2El">100</span>HP &nbsp;⭐<span id="sc2El">0</span></div>
+  </div>
+</div>
+<canvas id="c"></canvas>
+<div id="overlay">
+  <h2>🧟 Box Head Zombies</h2>
+  <div class="sub">Survive endless waves. Grab weapon crates to upgrade firepower.</div>
+  <div class="ctrl-grid">
+    <span><b>P1 Move:</b> W A S D</span>
+    <span><b>P2 Move:</b> Arrow Keys</span>
+    <span><b>P1 Shoot:</b> I J K L</span>
+    <span><b>P2 Shoot:</b> Numpad 8 4 5 6</span>
+  </div>
+  <button onclick="startGame()">Start Game</button>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GameConfig – all shared constants
+// ═══════════════════════════════════════════════════════════════════════════════
+const CFG = {
+  PS:   20,   // player half-size
+  ZS:   18,   // zombie half-size
+  BR:    5,   // bullet radius
+  TILE: 48,
+  /** Weapon definitions */
+  WEAPONS: {
+    pistol:  { label:'Pistol',  delay:22, damage:30, speed:9,  spread:0,    shots:1, color:'#fbbf24' },
+    shotgun: { label:'Shotgun', delay:45, damage:20, speed:8,  spread:0.28, shots:5, color:'#f97316' },
+    smg:     { label:'SMG',     delay: 7, damage:15, speed:10, spread:0.1,  shots:1, color:'#a78bfa' },
+    rocket:  { label:'Rocket',  delay:60, damage:80, speed:7,  spread:0,    shots:1, color:'#ef4444', splash:60 },
+  },
+  WEAPON_ORDER: ['pistol','shotgun','smg','rocket'],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ScreenShake – trauma-based camera shake
+// ═══════════════════════════════════════════════════════════════════════════════
+class ScreenShake {
+  constructor() { this._trauma = 0; }
+  add(v)  { this._trauma = Math.min(1, this._trauma + v); }
+  update() {
+    if (this._trauma <= 0) return { dx:0, dy:0 };
+    const m = this._trauma * this._trauma * 10;
+    const dx = (Math.random()*2-1)*m, dy = (Math.random()*2-1)*m;
+    this._trauma = Math.max(0, this._trauma - 0.04);
+    return { dx, dy };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Entity – base class for Player and Zombie
+// ═══════════════════════════════════════════════════════════════════════════════
+class Entity {
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} hp
+   * @param {number} halfSize  collision radius (square half-width)
+   */
+  constructor(x, y, hp, halfSize) {
+    this.x = x; this.y = y;
+    this.hp = hp; this.maxHp = hp;
+    this.halfSize = halfSize;
+    this.alive = true;
+    this.facing = { x: 1, y: 0 };
+  }
+
+  /** True if this entity overlaps another entity's bounding square. */
+  overlaps(other) {
+    return Math.abs(this.x - other.x) < this.halfSize + other.halfSize
+        && Math.abs(this.y - other.y) < this.halfSize + other.halfSize;
+  }
+
+  /** Euclidean distance to another entity. */
+  distTo(other) { return Math.hypot(other.x - this.x, other.y - this.y); }
+
+  /**
+   * Take damage; returns true if entity just died.
+   * @param {number} dmg
+   */
+  takeDamage(dmg) {
+    if (!this.alive) return false;
+    this.hp = Math.max(0, this.hp - dmg);
+    if (this.hp === 0) { this.alive = false; return true; }
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Player extends Entity
+// ═══════════════════════════════════════════════════════════════════════════════
+class Player extends Entity {
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} idx  0 = P1, 1 = P2
+   */
+  constructor(x, y, idx) {
+    super(x, y, 100, CFG.PS);
+    this.idx = idx;
+    this.score      = 0;
+    this.killStreak = 0;       // consecutive kills before taking damage
+    this.bestStreak = 0;       // highest streak this run
+    this.shootCD    = 0;
+    this.wIdx       = 0;
+    this.invuln     = 0;
+    this.streakTimer = 0;      // frames until streak resets on inactivity
+    this.color  = idx === 0 ? '#3b82f6' : '#22c55e';
+    this.accent = idx === 0 ? '#93c5fd' : '#86efac';
+    this.moveKeys  = idx === 0
+      ? { up:'KeyW',     down:'KeyS',     left:'KeyA',     right:'KeyD'     }
+      : { up:'ArrowUp',  down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'};
+    this.shootKeys = idx === 0
+      ? { up:'KeyI',    down:'KeyK',  left:'KeyJ',    right:'KeyL'    }
+      : { up:'Numpad8', down:'Numpad5',left:'Numpad4', right:'Numpad6' };
+  }
+
+  /** Current weapon definition. */
+  get weapon() { return CFG.WEAPONS[CFG.WEAPON_ORDER[this.wIdx]]; }
+
+  /** Upgrade to the next weapon (capped at max). */
+  upgradeWeapon() { this.wIdx = Math.min(this.wIdx + 1, CFG.WEAPON_ORDER.length - 1); }
+
+  /**
+   * Register a kill for streak tracking.
+   * @returns {number} current kill streak count
+   */
+  registerKill() {
+    this.killStreak++;
+    this.streakTimer = 300; // ~5 s at 60 fps before streak resets
+    if (this.killStreak > this.bestStreak) this.bestStreak = this.killStreak;
+    return this.killStreak;
+  }
+
+  /** Called when the player takes a hit (resets streak). */
+  onHit() { this.killStreak = 0; this.streakTimer = 0; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Zombie extends Entity
+// ═══════════════════════════════════════════════════════════════════════════════
+class Zombie extends Entity {
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} wave  current wave number (affects HP)
+   */
+  constructor(x, y, wave) {
+    const hp = 30 + wave * 12;
+    super(x, y, hp, CFG.ZS);
+    this.attackT = 60;
+    this.animT   = Math.random() * 10;
+    this.deadT   = 0;   // frames since death (for fade-out)
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Bullet – simple projectile data object (no class overhead needed)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WaveManager – controls wave spawning
+// ═══════════════════════════════════════════════════════════════════════════════
+class WaveManager {
+  constructor() {
+    this.wave     = 0;
+    this.spawnQ   = 0;
+    this.nextSpawnT = 0;
+    this.showBanner  = 0;   // frames remaining for wave-start banner
+  }
+
+  /** Advance to next wave; returns new wave number. */
+  nextWave() {
+    this.wave++;
+    this.spawnQ  = this.wave * 4 + 2;
+    this.nextSpawnT = 0;
+    this.showBanner = 140;
+    document.getElementById('waveEl').textContent = this.wave;
+    return this.wave;
+  }
+
+  /** Should we spawn right now? */
+  shouldSpawn(dt) {
+    this.nextSpawnT -= dt;
+    if (this.spawnQ > 0 && this.nextSpawnT <= 0) {
+      this.spawnQ--;
+      this.nextSpawnT = Math.max(5, 40 - this.wave * 1.5);
+      return true;
+    }
+    return false;
+  }
+
+  /** True when all queued zombies have been spawned. */
+  get queueEmpty() { return this.spawnQ <= 0; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BoxHeadGame – top-level game controller
+// ═══════════════════════════════════════════════════════════════════════════════
+class BoxHeadGame {
+  constructor() {
+    this._canvas  = document.getElementById('c');
+    this._ctx     = this._canvas.getContext('2d');
+    this._shake   = new ScreenShake();
+    this._keys    = {};
+    this._active  = false;
+    this._lastTS  = 0;
+    this._rafId   = 0;
+
+    /** @type {Player[]} */   this._players = [];
+    /** @type {Zombie[]} */   this._zombies = [];
+    /** @type {Array}    */   this._bullets = [];
+    /** @type {Array}    */   this._pickups = [];
+    /** @type {Array}    */   this._blood   = [];
+    /** @type {Array}    */   this._scoreParticles = [];
+
+    this._wm = new WaveManager();
+
+    this._resize();
+    window.addEventListener('resize', () => this._resize());
+    window.addEventListener('keydown', e => { this._keys[e.code] = true;  e.preventDefault(); });
+    window.addEventListener('keyup',   e => { this._keys[e.code] = false; });
+  }
+
+  _resize() {
+    this._canvas.width  = window.innerWidth;
+    this._canvas.height = window.innerHeight - document.querySelector('.header').offsetHeight;
+  }
+
+  /** Start a fresh game. */
+  start() {
+    document.getElementById('overlay').style.display = 'none';
+    this._active = true;
+    const CW = this._canvas.width, CH = this._canvas.height;
+
+    this._players = [
+      new Player(CW/2 - 90, CH/2, 0),
+      new Player(CW/2 + 90, CH/2, 1),
+    ];
+    this._zombies = []; this._bullets = []; this._pickups = [];
+    this._blood = []; this._scoreParticles = [];
+    this._wm = new WaveManager();
+    this._wm.nextWave();
+
+    cancelAnimationFrame(this._rafId);
+    this._rafId = requestAnimationFrame(ts => this._loop(ts));
+  }
+
+  _loop(ts) {
+    if (!this._active) return;
+    const dt = Math.min((ts - this._lastTS) / 16.67, 3);
+    this._lastTS = ts;
+    this._update(dt);
+    this._draw();
+    this._rafId = requestAnimationFrame(ts2 => this._loop(ts2));
+  }
+
+  // ── Update ─────────────────────────────────────────────────────────────────
+  _update(dt) {
+    const CW = this._canvas.width, CH = this._canvas.height;
+
+    // Players
+    this._players.forEach(p => this._updatePlayer(p, dt, CW, CH));
+
+    // Bullets
+    this._bullets.forEach(b => { b.x += b.vx*dt; b.y += b.vy*dt; b.ttl -= dt; });
+
+    // Spawn
+    if (this._wm.shouldSpawn(dt)) this._spawnZombie();
+
+    // Zombies
+    this._zombies.forEach(z => this._updateZombie(z, dt));
+
+    // Bullet-zombie collisions
+    this._bullets.forEach(b => this._checkBulletHits(b));
+
+    // Wave banner countdown
+    if (this._wm.showBanner > 0) this._wm.showBanner -= dt;
+
+    // Cleanup
+    this._bullets          = this._bullets.filter(b => b.ttl>0 && b.x>-20 && b.x<CW+20 && b.y>-20 && b.y<CH+20);
+    this._zombies          = this._zombies.filter(z => z.alive || z.deadT < 30);
+    this._blood.forEach(s => { s.x+=s.vx*dt; s.y+=s.vy*dt; s.life-=dt; });
+    this._blood            = this._blood.filter(s => s.life > 0);
+    this._scoreParticles.forEach(p => { p.y -= 1.2*dt; p.life -= dt; });
+    this._scoreParticles   = this._scoreParticles.filter(p => p.life > 0);
+    this._pickups.forEach(pk => pk.pulse = (pk.pulse + dt*0.1) % (Math.PI*2));
+
+    // Advance wave
+    if (this._wm.queueEmpty && this._zombies.filter(z=>z.alive).length === 0) {
+      this._wm.nextWave();
+      if (this._wm.wave % 3 === 0) this._spawnPickup();
+    }
+
+    // Game over
+    if (this._players.every(p => !p.alive)) {
+      this._active = false;
+      setTimeout(() => {
+        const ov = document.getElementById('overlay');
+        ov.querySelector('h2').textContent = '💀 Game Over';
+        ov.querySelector('.sub').textContent =
+          `Wave ${this._wm.wave}  ·  P1: ${this._players[0].score} pts  ·  P2: ${this._players[1].score} pts`;
+        ov.style.display = 'flex';
+      }, 1000);
+    }
+
+    // Streak timers
+    this._players.forEach(p => {
+      if (p.streakTimer > 0) { p.streakTimer -= dt; if (p.streakTimer <= 0) p.killStreak = 0; }
+    });
+
+    // HUD
+    document.getElementById('hp1El').textContent = Math.max(0, this._players[0].hp);
+    document.getElementById('sc1El').textContent = this._players[0].score;
+    document.getElementById('hp2El').textContent = Math.max(0, this._players[1].hp);
+    document.getElementById('sc2El').textContent = this._players[1].score;
+  }
+
+  _updatePlayer(p, dt, CW, CH) {
+    if (!p.alive) return;
+    if (p.invuln > 0) p.invuln -= dt;
+    const spd = 3.2 * dt;
+
+    let dx = 0, dy = 0;
+    if (this._keys[p.moveKeys.up])    dy -= 1;
+    if (this._keys[p.moveKeys.down])  dy += 1;
+    if (this._keys[p.moveKeys.left])  dx -= 1;
+    if (this._keys[p.moveKeys.right]) dx += 1;
+    if (dx || dy) {
+      const m = Math.hypot(dx, dy);
+      p.x += (dx/m)*spd; p.y += (dy/m)*spd;
+    }
+    p.x = Math.max(CFG.PS, Math.min(CW-CFG.PS, p.x));
+    p.y = Math.max(CFG.PS, Math.min(CH-CFG.PS, p.y));
+
+    // Shoot direction
+    let sdx = 0, sdy = 0;
+    if (this._keys[p.shootKeys.up])    sdy -= 1;
+    if (this._keys[p.shootKeys.down])  sdy += 1;
+    if (this._keys[p.shootKeys.left])  sdx -= 1;
+    if (this._keys[p.shootKeys.right]) sdx += 1;
+    if (sdx || sdy) {
+      const m = Math.hypot(sdx, sdy);
+      p.facing = { x: sdx/m, y: sdy/m };
+    }
+    if (p.shootCD > 0) p.shootCD -= dt;
+    const w = p.weapon;
+    if ((sdx||sdy) && p.shootCD <= 0) {
+      for (let s = 0; s < w.shots; s++) {
+        const ang = Math.atan2(p.facing.y, p.facing.x) + (Math.random()-0.5)*w.spread;
+        this._bullets.push({
+          x: p.x + p.facing.x*(CFG.PS+4),
+          y: p.y + p.facing.y*(CFG.PS+4),
+          vx: Math.cos(ang)*w.speed, vy: Math.sin(ang)*w.speed,
+          owner: p.idx, ttl: 90, damage: w.damage,
+          color: w.color, splash: w.splash||0,
+        });
+      }
+      p.shootCD = w.delay;
+    }
+
+    // Pickups
+    this._pickups.forEach((pk, i) => {
+      if (Math.hypot(p.x-pk.x, p.y-pk.y) < CFG.PS+14) {
+        if (pk.type === 'weapon') p.upgradeWeapon();
+        this._pickups.splice(i, 1);
+      }
+    });
+  }
+
+  _updateZombie(z, dt) {
+    if (!z.alive) { z.deadT += dt; return; }
+    z.animT += dt;
+
+    // Find nearest alive player
+    let tgt = null, td = Infinity;
+    this._players.forEach(p => {
+      if (!p.alive) return;
+      const d = z.distTo(p);
+      if (d < td) { td = d; tgt = p; }
+    });
+    if (!tgt) return;
+
+    // Flocking: heading toward target + separation from other zombies
+    const dx = tgt.x - z.x, dy = tgt.y - z.y;
+    const d = Math.hypot(dx, dy) || 1;
+    let sepX = 0, sepY = 0;
+    this._zombies.forEach(oz => {
+      if (oz === z || !oz.alive) return;
+      const ox = z.x-oz.x, oy = z.y-oz.y;
+      const od = Math.hypot(ox, oy);
+      if (od < CFG.ZS*2.5 && od > 0) { sepX += ox/od; sepY += oy/od; }
+    });
+    const zspd = (1.4 + this._wm.wave*0.07)*dt;
+    const mx = dx/d + sepX*0.4, my = dy/d + sepY*0.4;
+    const ml = Math.hypot(mx, my) || 1;
+    z.x += (mx/ml)*zspd; z.y += (my/ml)*zspd;
+    z.facing = { x: dx/d, y: dy/d };
+
+    // Melee
+    if (td < CFG.ZS + CFG.PS + 2) {
+      z.attackT = (z.attackT||60) - dt;
+      if (z.attackT <= 0 && tgt.invuln <= 0) {
+        const died = tgt.takeDamage(8 + this._wm.wave);
+        tgt.invuln = 25;
+        tgt.onHit();
+        z.attackT = 55;
+        this._shake.add(0.22);
+        if (died) tgt.alive = false;
+      }
+    }
+  }
+
+  _checkBulletHits(b) {
+    if (b.ttl <= 0) return;
+    this._zombies.forEach(z => {
+      if (!z.alive) return;
+      const d = z.distTo({ x:b.x, y:b.y });
+      const hitR = b.splash ? b.splash : CFG.ZS + CFG.BR;
+      if (d < hitR) {
+        const killed = z.takeDamage(b.damage);
+        b.ttl = -1;
+        for (let i = 0; i < 5; i++) {
+          this._blood.push({ x:z.x, y:z.y, vx:(Math.random()-0.5)*3, vy:(Math.random()-0.5)*3, life:30, r:Math.random()*4+2 });
+        }
+        if (killed) {
+          const owner = this._players[b.owner];
+          if (owner?.alive) {
+            const streak = owner.registerKill();
+            const bonus  = streak >= 5 ? 30 : streak >= 3 ? 20 : 10;
+            const earned = bonus + this._wm.wave;
+            owner.score += earned;
+            const label  = streak >= 3 ? `🔥×${streak} +${earned}` : `+${earned}`;
+            const col    = streak >= 5 ? '#fbbf24' : streak >= 3 ? '#f97316' : owner.accent;
+            this._scoreParticles.push({ x:z.x, y:z.y-10, text:label, life:40, color:col });
+            if (streak === 3)  this._scoreParticles.push({ x:z.x, y:z.y-28, text:'TRIPLE KILL!', life:55, color:'#f97316' });
+            if (streak === 5)  this._scoreParticles.push({ x:z.x, y:z.y-28, text:'RAMPAGE!',     life:55, color:'#fbbf24' });
+            if (streak === 10) this._scoreParticles.push({ x:z.x, y:z.y-28, text:'UNSTOPPABLE!', life:65, color:'#ef4444' });
+          }
+        }
+      }
+    });
+  }
+
+  _spawnZombie() {
+    const CW = this._canvas.width, CH = this._canvas.height;
+    const side = Math.floor(Math.random()*4);
+    let x, y;
+    if      (side===0){x=Math.random()*CW;     y=-CFG.ZS*2;}
+    else if (side===1){x=CW+CFG.ZS*2;          y=Math.random()*CH;}
+    else if (side===2){x=Math.random()*CW;     y=CH+CFG.ZS*2;}
+    else              {x=-CFG.ZS*2;            y=Math.random()*CH;}
+    this._zombies.push(new Zombie(x, y, this._wm.wave));
+  }
+
+  _spawnPickup() {
+    const m = 60, CW = this._canvas.width, CH = this._canvas.height;
+    this._pickups.push({
+      x: m + Math.random()*(CW-m*2), y: m + Math.random()*(CH-m*2),
+      type:'weapon', pulse:0,
+    });
+  }
+
+  // ── Draw ───────────────────────────────────────────────────────────────────
+  _draw() {
+    const ctx = this._ctx;
+    const CW = this._canvas.width, CH = this._canvas.height;
+
+    // Screen shake
+    const { dx, dy } = this._shake.update();
+    ctx.save();
+    if (dx || dy) ctx.translate(dx, dy);
+
+    // Background
+    ctx.clearRect(-20, -20, CW+40, CH+40);
+    ctx.fillStyle = '#0c0c0c'; ctx.fillRect(-20, -20, CW+40, CH+40);
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+    for (let x=0; x<CW; x+=CFG.TILE) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CH); ctx.stroke(); }
+    for (let y=0; y<CH; y+=CFG.TILE) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke(); }
+    const vg = ctx.createRadialGradient(CW/2,CH/2,CW*0.2, CW/2,CH/2,CW*0.75);
+    vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.45)');
+    ctx.fillStyle=vg; ctx.fillRect(-20,-20,CW+40,CH+40);
+
+    // Blood
+    this._blood.forEach(s => {
+      ctx.globalAlpha = Math.max(0, s.life/30)*0.7;
+      ctx.fillStyle='#7f1d1d'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+    }); ctx.globalAlpha=1;
+
+    // Pickups
+    this._pickups.forEach(pk => {
+      const pulse = Math.sin(pk.pulse*4)*0.3+0.7;
+      ctx.save(); ctx.globalAlpha=pulse; ctx.fillStyle='#7c3aed';
+      ctx.shadowBlur=18; ctx.shadowColor='#a855f7';
+      ctx.beginPath(); ctx.roundRect(pk.x-14,pk.y-14,28,28,6); ctx.fill();
+      ctx.shadowBlur=0; ctx.fillStyle='#fff';
+      ctx.font='bold 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('🔫',pk.x,pk.y+1); ctx.restore();
+    });
+
+    // Bullets
+    this._bullets.forEach(b => {
+      ctx.save(); ctx.shadowBlur=10; ctx.shadowColor=b.color;
+      ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,CFG.BR,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+
+    // Zombies
+    this._zombies.forEach(z => this._drawZombie(ctx, z));
+
+    // Players
+    this._players.forEach(p => this._drawPlayer(ctx, p));
+
+    // Score particles
+    this._scoreParticles.forEach(sp => {
+      ctx.globalAlpha = Math.min(1, sp.life/15);
+      ctx.fillStyle = sp.color; ctx.font='bold 13px system-ui';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.shadowColor = sp.color; ctx.shadowBlur = 8;
+      ctx.fillText(sp.text, sp.x, sp.y);
+      ctx.shadowBlur=0; ctx.globalAlpha=1;
+    });
+
+    // Wave banner
+    this._drawHUD(ctx, CW, CH);
+
+    // Kill-streak HUD
+    this._drawStreakHUD(ctx, CW, CH);
+
+    ctx.restore(); // undo shake translate
+  }
+
+  _drawZombie(ctx, z) {
+    const alpha = z.alive ? 1 : Math.max(0, 1-z.deadT/30);
+    ctx.globalAlpha = alpha;
+    const bob = Math.sin((z.animT||0)*0.4)*1.5;
+    const ZS  = CFG.ZS;
+
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(z.x+3, z.y+ZS+2, ZS*0.7, ZS*0.3, 0, 0, Math.PI*2); ctx.fill();
+
+    // Body box
+    ctx.fillStyle = z.alive ? '#15803d' : '#4b5563';
+    ctx.beginPath(); ctx.roundRect(z.x-ZS, z.y-ZS+bob, ZS*2, ZS*2, 4); ctx.fill();
+    ctx.fillStyle = z.alive ? '#16a34a' : '#6b7280';
+    ctx.beginPath(); ctx.roundRect(z.x-ZS+2, z.y-ZS+2+bob, ZS*2-4, ZS*2-4, 3); ctx.fill();
+
+    // Eyes
+    if (z.alive) {
+      ctx.fillStyle='#ff0000'; ctx.shadowBlur=6; ctx.shadowColor='#ff0000';
+      ctx.beginPath(); ctx.arc(z.x-6, z.y-4+bob, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(z.x+6, z.y-4+bob, 3, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+    }
+
+    // HP bar (colour-coded: green → yellow → red)
+    if (z.alive && z.hp < z.maxHp) {
+      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(z.x-ZS, z.y-ZS-8+bob, ZS*2, 4);
+      const ratio = Math.max(0, z.hp/z.maxHp);
+      ctx.fillStyle = ratio>0.5 ? '#22c55e' : ratio>0.25 ? '#f59e0b' : '#ef4444';
+      ctx.fillRect(z.x-ZS, z.y-ZS-8+bob, ZS*2*ratio, 4);
+    }
+    ctx.globalAlpha=1;
+  }
+
+  _drawPlayer(ctx, p) {
+    if (!p.alive) return;
+    const flash = p.invuln>0 && Math.floor(p.invuln/4)%2===0;
+    if (flash) ctx.globalAlpha=0.4;
+    const PS = CFG.PS;
+
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(p.x+3, p.y+PS+3, PS*0.75, PS*0.35, 0, 0, Math.PI*2); ctx.fill();
+
+    // Body
+    ctx.fillStyle=p.color; ctx.beginPath(); ctx.roundRect(p.x-PS, p.y-PS, PS*2, PS*2, 5); ctx.fill();
+    ctx.fillStyle=p.accent; ctx.beginPath(); ctx.roundRect(p.x-PS+2, p.y-PS+2, PS*2-4, PS*2-4, 4); ctx.fill();
+
+    // Gun barrel
+    ctx.strokeStyle='#fbbf24'; ctx.lineWidth=4; ctx.lineCap='round';
+    ctx.shadowBlur=8; ctx.shadowColor='#fbbf24';
+    ctx.beginPath();
+    ctx.moveTo(p.x+p.facing.x*PS, p.y+p.facing.y*PS);
+    ctx.lineTo(p.x+p.facing.x*(PS+13), p.y+p.facing.y*(PS+13));
+    ctx.stroke(); ctx.shadowBlur=0;
+
+    // Player label
+    ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`P${p.idx+1}`, p.x, p.y+1);
+
+    // Weapon label
+    ctx.fillStyle=p.accent; ctx.font='10px system-ui';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText(p.weapon.label, p.x, p.y+PS+4);
+
+    // HP bar
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(p.x-PS, p.y-PS-10, PS*2, 5);
+    const hr = p.hp/p.maxHp;
+    ctx.fillStyle = hr>0.5?'#22c55e':hr>0.25?'#f59e0b':'#ef4444';
+    ctx.fillRect(p.x-PS, p.y-PS-10, PS*2*hr, 5);
+
+    ctx.globalAlpha=1;
+  }
+
+  _drawHUD(ctx, CW, CH) {
+    const alive = this._zombies.filter(z=>z.alive).length;
+    // Wave banner (fades out)
+    if (this._wm.showBanner > 0) {
+      const a = Math.min(1, this._wm.showBanner / 30);
+      ctx.save(); ctx.globalAlpha=a;
+      ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0, CH/2-32, CW, 64);
+      ctx.fillStyle='#fbbf24'; ctx.font='bold 28px system-ui';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.shadowColor='#fbbf24'; ctx.shadowBlur=20;
+      ctx.fillText(`⚡ WAVE ${this._wm.wave}`, CW/2, CH/2);
+      ctx.shadowBlur=0; ctx.restore();
+    }
+
+    // Zombie counter
+    if (alive > 0 || this._wm.spawnQ > 0) {
+      const total = alive + this._wm.spawnQ;
+      ctx.fillStyle='rgba(239,68,68,0.8)';
+      ctx.font='bold 11px system-ui'; ctx.textAlign='right'; ctx.textBaseline='top';
+      ctx.fillText(`🧟 ${total} remaining`, CW-12, 8);
+    }
+  }
+
+  _drawStreakHUD(ctx, CW, CH) {
+    this._players.forEach((p, i) => {
+      if (!p.alive || p.killStreak < 2) return;
+      const x = i === 0 ? 12 : CW - 12;
+      const align = i === 0 ? 'left' : 'right';
+      const color = p.killStreak >= 5 ? '#fbbf24' : '#f97316';
+      ctx.save();
+      ctx.fillStyle = color; ctx.font = 'bold 12px system-ui';
+      ctx.textAlign = align; ctx.textBaseline = 'bottom';
+      ctx.shadowColor = color; ctx.shadowBlur = 10;
+      ctx.fillText(`🔥 ${p.killStreak} STREAK`, x, CH - 8);
+      ctx.shadowBlur = 0; ctx.restore();
+    });
+  }
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────────
+const game = new BoxHeadGame();
+
+/** Called by the overlay Start button. */
+function startGame() { game.start(); }
+
+async function goBack() {
+  try {
+    const api = window.spaceAPI;
+    if (api?.tabs) {
+      const tabs = await api.tabs.list();
+      const active = tabs.find(t => t.isActive);
+      if (active) { api.tabs.navigate(active.id, 'space://games'); return; }
+    }
+  } catch (_) {}
+  history.back();
+}
+</script>
+</body>
+</html>

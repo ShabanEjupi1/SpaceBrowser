@@ -1,0 +1,422 @@
+/* Address Bar */
+
+.addressBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--addressbar-height);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-3);
+  flex-shrink: 0;
+}
+
+.navControls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.navBtn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+  }
+
+  &:disabled {
+    color: var(--color-text-muted);
+    cursor: default;
+    opacity: 0.5;
+  }
+}
+
+.addressForm {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-3);
+  gap: var(--space-2);
+  height: 32px;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+
+  &.focused {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-dim);
+  }
+}
+
+.securityIcon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.addressInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+  min-width: 0;
+
+  &::placeholder {
+    color: var(--color-text-muted);
+  }
+}
+
+.clearBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+
+  &:hover { color: var(--color-text-primary); }
+}
+
+.rightControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.aiToggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px var(--space-3);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: all var(--transition-base);
+
+  &:hover {
+    /* Hover towards Spaceship amber identity */
+    border-color: var(--ship-border-hover);
+    color: var(--ship-accent-light);
+    background: var(--ship-accent-dim);
+  }
+
+  &.active {
+    background: var(--ship-accent-dim);
+    border-color: var(--ship-accent);
+    color: var(--ship-accent-light);
+    box-shadow: 0 0 10px rgba(217, 119, 6, 0.22);
+  }
+}
+
+.aiLabel {
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.iconBtn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-accent-light);
+  }
+
+  &.bookmarked {
+    color: var(--color-accent-light);
+  }
+
+  &.readerActive {
+    color: var(--color-accent-light);
+    background: var(--color-accent-dim);
+  }
+}
+
+/* ── Pinned Extensions toolbar ──────────────────────────────────────────────── */
+
+.pinnedExts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pinnedExtBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+              transform 0.1s ease;
+
+  &:hover {
+    background: var(--color-bg-hover);
+    border-color: var(--color-border);
+  }
+
+  &:active,
+  &.pinnedActive {
+    background: var(--color-accent-dim);
+    border-color: var(--color-accent);
+    transform: scale(0.9);
+  }
+}
+
+.pinnedExtIcon {
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+  /* Slight shadow so emoji are readable against dark backgrounds */
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+.pinnedDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+// ── Extension Popup ────────────────────────────────────────────────────────────
+
+.extPopup {
+  position: fixed;
+  z-index: 99999;
+  width: 272px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: extPopupIn 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+
+  @keyframes extPopupIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+}
+
+.extPopupHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.extPopupIcon {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+}
+
+.extPopupMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.extPopupName {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.extPopupCat {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.extPopupClose {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+  }
+}
+
+.extPopupDesc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+  padding-top: 10px;
+}
+
+.extPopupAction {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  margin: 0;
+  padding: 0;
+  font-style: italic;
+}
+
+.extPopupControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.extPopupActivate {
+  flex: 1;
+  background: var(--color-accent);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, transform 0.1s;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+}
+
+.extPopupActivating {
+  background: #16a34a !important;
+}
+
+// Toggle switch
+.extPopupToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  input[type='checkbox'] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.extPopupTrack {
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+  border-radius: 99px;
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-border);
+  position: relative;
+  transition: background 0.18s, border-color 0.18s;
+  flex-shrink: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    transition: transform 0.18s, background 0.18s;
+  }
+
+  input:checked ~ & {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+
+    &::after {
+      transform: translateX(13px);
+      background: #fff;
+    }
+  }
+}
+
+.extPopupToggleLabel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  min-width: 18px;
+}
+
+.extPopupFooter {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 6px 0 2px;
+  text-align: left;
+  border-top: 1px solid var(--color-border);
+  transition: opacity 0.12s;
+  width: 100%;
+
+  &:hover {
+    opacity: 0.75;
+  }
+}

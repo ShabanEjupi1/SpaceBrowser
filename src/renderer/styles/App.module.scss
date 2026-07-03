@@ -1,0 +1,90 @@
+/* App layout */
+
+.appRoot {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background: var(--color-bg-primary);
+  /* Do NOT use isolation:isolate here — it creates a new stacking context that
+     would confine position:fixed popups (extension dropdowns, etc.) to this
+     element's visual bounds, making them invisible when they extend below the
+     chrome. The BrowserView native layer always renders beneath the shell
+     renderer window regardless of CSS z-index. */
+}
+
+/* ── Browser chrome wrapper (titlebar + tabbar + addressbar) ── */
+/* This wrapper lifts all chrome UI above the BrowserView plane so that
+   extension popups, dropdown menus, and context menus never slip behind
+   the web content layer. The BrowserView is a native layer — we cannot
+   z-index above it from within the BrowserView itself, but we CAN ensure
+   our overlay chrome is at the very top of the renderer layer stack.
+   IMPORTANT: Do NOT add will-change:transform or isolation:isolate here —
+   those create new stacking contexts that confine position:fixed children
+   to the element bounds and prevent popups from rendering above the chrome. */
+.browserChrome {
+  position: relative;
+  z-index: 500;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Content row: web area + optional sidebar side-by-side ── */
+.contentRow {
+  display: flex;
+  flex: 1;
+  min-height: 0;     /* allow flex children to shrink below their natural size */
+  overflow: hidden;
+  position: relative;
+}
+
+/* The transparent placeholder that sits above the BrowserView layer.
+   It is pointer-events: none so it doesn't intercept clicks going to the
+   native BrowserView, but it reserves the correct space so Chrome layout
+   is accurate and Electron knows the correct bounds to assign to BrowserView. */
+.contentArea {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  pointer-events: none;
+  background: transparent;
+}
+
+/* Loading / empty state (visible before first tab loads) */
+.loadingState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  pointer-events: none;
+  background: var(--color-bg-primary);
+}
+
+/* ── Sidebar panel (slides in from the right) ── */
+.sidebarWrapper {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  /* Amber seam: visually separates the Spaceship cockpit from the Space browser */
+  border-left: 1px solid var(--ship-border);
+  box-shadow: -6px 0 24px rgba(0, 0, 0, 0.6);
+  background: var(--ship-bg-secondary);
+  animation: slideIn 0.2s ease;
+  overflow: hidden;
+  position: relative;
+  z-index: 100;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}

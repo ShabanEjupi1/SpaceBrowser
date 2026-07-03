@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extensions – Space</title>
+  <style>
+    :root {
+      --bg:           #0a0a0e;
+      --surface:      #13131c;
+      --surface-2:    #1a1a28;
+      --surface-3:    #20202e;
+      --border:       rgba(255,255,255,0.07);
+      --border-hover: rgba(37,99,235,0.45);
+      --text-primary: #e8e8f0;
+      --text-sec:     #8888aa;
+      --accent:       #2563eb;
+      --accent-light: #60a5fa;
+      --accent-glow:  rgba(37,99,235,0.22);
+      --green:        #34d399;
+      --red:          #f87171;
+      --radius:       14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      overflow-y: auto;
+      user-select: none;
+      -webkit-app-region: no-drag;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 28px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    .header-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-sec);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .header-btn:hover {
+      background: rgba(37,99,235,0.1);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-spacer { flex: 1; }
+    .search-wrap {
+      width: min(360px, 90vw);
+      display: flex;
+      align-items: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      overflow: hidden;
+      transition: border-color 0.18s;
+    }
+    .search-wrap:focus-within { border-color: var(--accent); }
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 8px 16px;
+      color: var(--text-primary);
+      font-size: 13px;
+      user-select: text;
+    }
+    .search-input::placeholder { color: var(--text-sec); }
+
+    /* ── Tab nav ── */
+    .tab-nav {
+      display: flex;
+      gap: 0;
+      padding: 0 28px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-nav-btn {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-sec);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-nav-btn:hover { color: var(--text-primary); }
+    .tab-nav-btn.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+    .tab-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 7px;
+      margin-left: 6px;
+      color: var(--text-sec);
+    }
+    .tab-nav-btn.active .tab-count { background: rgba(37,99,235,0.2); color: var(--accent-light); }
+
+    /* ── Content layout ── */
+    .content {
+      flex: 1;
+      padding: 28px;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Section heading ── */
+    .section-heading {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .section-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Hero banner ── */
+    .hero {
+      background: linear-gradient(135deg, #0f1629 0%, #1a1036 50%, #0f1629 100%);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 16px;
+      padding: 32px 36px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 220px; height: 220px;
+      background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-icon { font-size: 52px; flex-shrink: 0; }
+    .hero-text h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .hero-text p { font-size: 13px; color: var(--text-sec); line-height: 1.6; max-width: 520px; }
+    .hero-stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 16px;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat-num { font-size: 22px; font-weight: 800; color: var(--accent-light); }
+    .hero-stat-label { font-size: 11px; color: var(--text-sec); }
+
+    /* ── Category filter pills ── */
+    .cat-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .cat-pill {
+      padding: 5px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-sec);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cat-pill:hover, .cat-pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Extension cards grid ── */
+    .ext-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Extension card ── */
+    .ext-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+      position: relative;
+    }
+    .ext-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .ext-card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .ext-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      font-family: monospace;
+    }
+    .ext-meta { flex: 1; min-width: 0; }
+    .ext-name {
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ext-author { font-size: 11px; color: var(--text-sec); margin-top: 2px; }
+    .ext-version-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .ext-version {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--text-sec);
+      border: 1px solid var(--border);
+    }
+    .ext-cat-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .cat-productivity { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+    .cat-privacy      { background: rgba(99,102,241,0.12);  color: #a78bfa; border: 1px solid rgba(99,102,241,0.2); }
+    .cat-appearance   { background: rgba(249,115,22,0.12);  color: #fb923c; border: 1px solid rgba(249,115,22,0.2); }
+    .cat-ai           { background: rgba(37,99,235,0.12);   color: #60a5fa; border: 1px solid rgba(37,99,235,0.2); }
+    .cat-developer    { background: rgba(234,179,8,0.12);   color: #fbbf24; border: 1px solid rgba(234,179,8,0.2); }
+    .cat-other        { background: rgba(156,163,175,0.12); color: #9ca3af; border: 1px solid rgba(156,163,175,0.2); }
+
+    .ext-desc {
+      font-size: 12px;
+      color: var(--text-sec);
+      line-height: 1.6;
+    }
+
+    /* Ratings & stats row */
+    .ext-stats-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 11px;
+      color: var(--text-sec);
+    }
+    .star-rating { color: #fbbf24; letter-spacing: -1px; }
+    .rating-num { margin-left: 4px; }
+
+    /* Permission pills */
+    .ext-perms {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .perm-pill {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      color: var(--text-sec);
+    }
+
+    /* Action row */
+    .ext-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 4px;
+    }
+    .btn-install {
+      flex: 1;
+      padding: 9px;
+      background: var(--accent);
+      border: none;
+      border-radius: 9px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.12s, transform 0.08s;
+    }
+    .btn-install:hover { background: #1d4ed8; }
+    .btn-install:active { transform: scale(0.97); }
+    .btn-install.loading { opacity: 0.6; pointer-events: none; }
+
+    .btn-uninstall {
+      flex: 1;
+      padding: 9px;
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 9px;
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .btn-uninstall:hover { background: rgba(248,113,113,0.2); }
+
+    /* Pin button – marketplace card variant */
+    .btn-pin {
+      flex: 1;
+      padding: 9px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text-sec);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .btn-pin:hover { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+    .btn-pin.pinned { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.5); color: #fcd34d; }
+
+    /* Pin button – installed row compact variant */
+    .btn-sm-pin {
+      padding: 5px 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .btn-sm-pin:hover { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+    .btn-sm-pin.pinned { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.5); color: #fcd34d; }
+
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      background: var(--text-sec);
+      border-radius: 50%;
+      top: 2px; left: 2px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-track { background: rgba(37,99,235,0.25); border-color: var(--accent); }
+    .toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: var(--accent-light); }
+
+    /* Installed badge */
+    .installed-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(52,211,153,0.15);
+      border: 1px solid rgba(52,211,153,0.3);
+      border-radius: 20px;
+      padding: 2px 9px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    /* ── Installed list (compact) ── */
+    .installed-list { display: flex; flex-direction: column; gap: 10px; }
+    .installed-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: border-color 0.15s;
+    }
+    .installed-row:hover { border-color: var(--border-hover); }
+    .inst-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      font-family: monospace;
+    }
+    .inst-meta { flex: 1; min-width: 0; }
+    .inst-name { font-size: 13px; font-weight: 700; }
+    .inst-sub  { font-size: 11px; color: var(--text-sec); margin-top: 2px;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .inst-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .btn-sm-remove {
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 7px;
+      color: var(--red);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .btn-sm-remove:hover { background: rgba(248,113,113,0.12); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 60px 20px;
+      color: var(--text-sec);
+      text-align: center;
+    }
+    .empty-state-icon { font-size: 48px; opacity: 0.5; }
+
+    /* ── Toast ── */
+    #ext-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e2030;
+      border: 1px solid rgba(52,211,153,0.4);
+      border-radius: 10px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #e8e8f0;
+      z-index: 9999;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #ext-toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #ext-toast.error { border-color: rgba(248,113,113,0.4); }
+
+    @media (max-width: 640px) {
+      .content { padding: 16px; }
+      .hero { flex-direction: column; gap: 16px; }
+      .ext-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <button class="header-btn" onclick="goHome()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+      <polyline points="9,2 4,7 9,12"/>
+    </svg>
+    Home
+  </button>
+  <span class="header-title">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+    </svg>
+    Space Extensions
+  </span>
+  <div class="header-spacer"></div>
+  <div class="search-wrap">
+    <input class="search-input" id="searchInput" type="text" placeholder="Search extensions…" oninput="onSearch(this.value)" />
+  </div>
+</header>
+
+<!-- Tab nav -->
+<nav class="tab-nav">
+  <button class="tab-nav-btn active" data-tab="marketplace" onclick="switchTab('marketplace')">
+    Marketplace
+  </button>
+  <button class="tab-nav-btn" data-tab="installed" onclick="switchTab('installed')">
+    Installed
+    <span class="tab-count" id="installedCount">0</span>
+  </button>
+</nav>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- ── Marketplace tab ── -->
+  <div class="tab-panel active" id="panel-marketplace">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-icon">🧩</div>
+      <div class="hero-text">
+        <h2>Extend Space Your Way</h2>
+        <p>Install powerful extensions that integrate seamlessly with the Space engine.
+           Dark mode, ad blocking, AI tools, developer utilities — everything runs
+           <strong>100% locally</strong>, no accounts required.</p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-num" id="statTotal">0</div>
+            <div class="hero-stat-label">Extensions</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num" id="statInstalled">0</div>
+            <div class="hero-stat-label">Installed</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">100%</div>
+            <div class="hero-stat-label">Local & Private</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category filter -->
+    <div class="cat-bar" id="catBar">
+      <button class="cat-pill active" data-cat="all" onclick="setCategory('all')">All</button>
+      <button class="cat-pill" data-cat="productivity" onclick="setCategory('productivity')">Productivity</button>
+      <button class="cat-pill" data-cat="privacy" onclick="setCategory('privacy')">Privacy</button>
+      <button class="cat-pill" data-cat="appearance" onclick="setCategory('appearance')">Appearance</button>
+      <button class="cat-pill" data-cat="ai" onclick="setCategory('ai')">AI Tools</button>
+      <button class="cat-pill" data-cat="developer" onclick="setCategory('developer')">Developer</button>
+    </div>
+
+    <div class="section-heading" id="mktSectionLabel">All Extensions</div>
+    <div class="ext-grid" id="mktGrid"></div>
+  </div>
+
+  <!-- ── Installed tab ── -->
+  <div class="tab-panel" id="panel-installed">
+    <div class="section-heading">Installed Extensions</div>
+    <div class="installed-list" id="installedList"></div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="ext-toast">
+  <span id="toastIcon">✅</span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let _catalogue   = [];   // full marketplace data (ExtensionManifest + _installed, _enabled)
+let _installed   = [];   // InstalledExtension[]
+let _currentCat  = 'all';
+let _searchQuery = '';
+
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+async function init() {
+  await refresh();
+}
+
+async function refresh() {
+  const api = window.spaceAPI;
+  if (api?.extensions) {
+    _catalogue  = await api.extensions.marketplace();
+    _installed  = await api.extensions.list();
+  } else {
+    // Fallback: show a placeholder when running outside Electron (dev preview)
+    _catalogue  = PLACEHOLDER_CATALOGUE;
+    _installed  = [];
+  }
+  updateStats();
+  renderMarketplace();
+  renderInstalled();
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('statTotal').textContent     = _catalogue.length;
+  document.getElementById('statInstalled').textContent = _installed.length;
+  document.getElementById('installedCount').textContent = _installed.length;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-nav-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'panel-' + name));
+}
+
+// ── Category ─────────────────────────────────────────────────────────────────
+function setCategory(cat) {
+  _currentCat = cat;
+  document.querySelectorAll('.cat-pill').forEach(b =>
+    b.classList.toggle('active', b.dataset.cat === cat));
+  const labels = { all:'All Extensions', productivity:'Productivity', privacy:'Privacy & Security',
+                   appearance:'Appearance', ai:'AI Tools', developer:'Developer Tools' };
+  document.getElementById('mktSectionLabel').textContent = labels[cat] || cat;
+  renderMarketplace();
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+function onSearch(val) {
+  _searchQuery = val.toLowerCase();
+  renderMarketplace();
+}
+
+// ── Marketplace render ────────────────────────────────────────────────────────
+function renderMarketplace() {
+  const grid = document.getElementById('mktGrid');
+  const q = _searchQuery;
+
+  const filtered = _catalogue.filter(ext => {
+    const catOk = _currentCat === 'all' || ext.category === _currentCat;
+    const textOk = !q ||
+      ext.name.toLowerCase().includes(q) ||
+      ext.description.toLowerCase().includes(q) ||
+      (ext.tags || []).some(t => t.includes(q));
+    return catOk && textOk;
+  });
+
+  grid.innerHTML = '';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-state-icon">🔍</div>
+      <p>No extensions match your search.</p>
+    </div>`;
+    return;
+  }
+
+  filtered.forEach(ext => renderExtCard(grid, ext));
+}
+
+function renderExtCard(container, ext) {
+  const isInstalled = ext._installed ?? _installed.some(i => i.id === ext.id);
+  const installedExt = _installed.find(i => i.id === ext.id);
+  const isEnabled = installedExt?.enabled ?? false;
+
+  const isPinned = installedExt?.pinned ?? false;
+
+  const stars = ext.rating ? '★'.repeat(Math.round(ext.rating)) + '☆'.repeat(5 - Math.round(ext.rating)) : '';
+  const installs = ext.installs ? formatNumber(ext.installs) + ' installs' : '';
+
+  const permsHtml = (ext.permissions || []).map(p =>
+    `<span class="perm-pill">${esc(p)}</span>`).join('');
+
+  const card = document.createElement('div');
+  card.className = 'ext-card';
+  card.dataset.id = ext.id;
+
+  card.innerHTML = `
+    ${isInstalled ? '<span class="installed-badge">✓ Installed</span>' : ''}
+    <div class="ext-card-top">
+      <div class="ext-icon">${ext.icon}</div>
+      <div class="ext-meta">
+        <div class="ext-name">${esc(ext.name)}</div>
+        <div class="ext-author">by ${esc(ext.author)}</div>
+        <div class="ext-version-row">
+          <span class="ext-version">v${esc(ext.version)}</span>
+          <span class="ext-cat-badge cat-${ext.category}">${esc(ext.category)}</span>
+        </div>
+      </div>
+    </div>
+    <p class="ext-desc">${esc(ext.description)}</p>
+    ${stars ? `<div class="ext-stats-row">
+      <span class="star-rating">${stars}</span>
+      <span class="rating-num">${ext.rating?.toFixed(1)}</span>
+      ${installs ? `<span>·</span><span>${installs}</span>` : ''}
+    </div>` : ''}
+    <div class="ext-perms">${permsHtml}</div>
+    <div class="ext-actions" id="actions-${ext.id}"></div>
+  `;
+
+  const actionsEl = card.querySelector(`#actions-${ext.id}`);
+  if (isInstalled) {
+    actionsEl.innerHTML = `
+      <label class="toggle-switch" title="${isEnabled ? 'Disable' : 'Enable'} extension">
+        <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleExt('${ext.id}', this.checked)">
+        <span class="toggle-track"></span>
+      </label>
+      <button class="btn-pin ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin from toolbar' : 'Pin to toolbar'}" onclick="pinExt('${ext.id}', ${!isPinned})">
+        ${isPinned ? '📌 Pinned' : '📌 Pin'}
+      </button>
+      <button class="btn-uninstall" onclick="uninstallExt('${ext.id}', '${esc(ext.name)}')">Remove</button>
+    `;
+  } else {
+    actionsEl.innerHTML = `
+      <button class="btn-install" id="install-btn-${ext.id}" onclick="installExt('${ext.id}', '${esc(ext.name)}')">
+        + Install
+      </button>
+    `;
+  }
+
+  container.appendChild(card);
+}
+
+// ── Installed render ──────────────────────────────────────────────────────────
+function renderInstalled() {
+  const list = document.getElementById('installedList');
+  list.innerHTML = '';
+
+  if (_installed.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">🧩</div>
+      <p>No extensions installed yet.</p>
+      <p style="font-size:12px;margin-top:6px">Browse the <a href="#" onclick="switchTab('marketplace');return false;" style="color:var(--accent-light)">Marketplace</a> to add your first one.</p>
+    </div>`;
+    return;
+  }
+
+  _installed.forEach(ext => {
+    const row = document.createElement('div');
+    row.className = 'installed-row';
+    row.dataset.id = ext.id;
+    row.innerHTML = `
+      <div class="inst-icon">${ext.icon}</div>
+      <div class="inst-meta">
+        <div class="inst-name">${esc(ext.name)}</div>
+        <div class="inst-sub">v${esc(ext.version)} · ${esc(ext.category)} · ${esc(ext.description)}</div>
+      </div>
+      <div class="inst-actions">
+        <label class="toggle-switch" title="${ext.enabled ? 'Disable' : 'Enable'}">
+          <input type="checkbox" ${ext.enabled ? 'checked' : ''} onchange="toggleExt('${ext.id}', this.checked)">
+          <span class="toggle-track"></span>
+        </label>
+        <button class="btn-sm-pin ${ext.pinned ? 'pinned' : ''}" title="${ext.pinned ? 'Unpin from toolbar' : 'Pin to toolbar'}" onclick="pinExt('${ext.id}', ${!ext.pinned})">
+          ${ext.pinned ? '📌' : '📌 Pin'}
+        </button>
+        <button class="btn-sm-remove" onclick="uninstallExt('${ext.id}', '${esc(ext.name)}')">Remove</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+async function installExt(id, name) {
+  const btn = document.getElementById(`install-btn-${id}`);
+  if (btn) { btn.textContent = 'Installing…'; btn.classList.add('loading'); }
+  try {
+    await window.spaceAPI?.extensions?.install(id);
+    showToast(`✓ "${name}" installed and enabled!`);
+    await refresh();
+  } catch (err) {
+    showToast(`Install failed: ${err?.message || String(err)}`, true);
+    if (btn) { btn.textContent = '+ Install'; btn.classList.remove('loading'); }
+  }
+}
+
+async function uninstallExt(id, name) {
+  if (!confirm(`Remove extension "${name}"?`)) return;
+  try {
+    await window.spaceAPI?.extensions?.uninstall(id);
+    showToast(`Removed "${name}".`);
+    await refresh();
+  } catch (err) {
+    showToast(`Remove failed: ${err?.message || String(err)}`, true);
+  }
+}
+
+async function toggleExt(id, enabled) {
+  try {
+    await window.spaceAPI?.extensions?.toggle(id, enabled);
+    await refresh();
+  } catch (err) {
+    showToast(`Toggle failed: ${err?.message || String(err)}`, true);
+  }
+}
+
+async function pinExt(id, pinned) {
+  try {
+    await window.spaceAPI?.extensions?.setPin(id, pinned);
+    const name = _installed.find(e => e.id === id)?.name ?? id;
+    showToast(pinned ? `📌 "${name}" pinned to toolbar` : `Unpinned "${name}" from toolbar`);
+    await refresh();
+  } catch (err) {
+    showToast(`Pin failed: ${err?.message || String(err)}`, true);
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('ext-toast');
+  if (!el) return;
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = isError ? '❌' : '✅';
+  el.classList.toggle('error', isError);
+  el.classList.add('visible');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('visible'), 3500);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+async function goHome() {
+  try {
+    const api = window.spaceAPI;
+    if (api?.tabs) {
+      const tabs = await api.tabs.list();
+      const active = tabs.find(t => t.isActive);
+      if (active) { api.tabs.navigate(active.id, 'space://newtab'); return; }
+    }
+  } catch (_) {}
+  history.back();
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+
+function formatNumber(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'k';
+  return String(n);
+}
+
+// ── Placeholder catalogue (used when not running in Electron) ─────────────────
+const PLACEHOLDER_CATALOGUE = [
+  { id:'space-dark-reader',  name:'Dark Reader',          version:'1.2.0', description:'Enables dark mode on every website automatically.', author:'Space Team', category:'appearance', icon:'🌑', permissions:['tabs','storage'], rating:4.9, installs:124500, tags:['dark','eye'], _installed:false, _enabled:false },
+  { id:'space-ad-blocker',   name:'Space Shield',         version:'2.1.0', description:'Blocks ads, trackers, and pop-ups site-wide.',       author:'Space Team', category:'privacy',    icon:'🛡️', permissions:['webRequest','tabs'], rating:4.8, installs:98200,  tags:['ads','privacy'], _installed:false, _enabled:false },
+  { id:'space-json-formatter', name:'JSON Formatter',     version:'2.0.0', description:'Formats raw JSON with syntax highlighting.',          author:'Space Team', category:'developer',  icon:'{ }', permissions:['tabs'], rating:4.9, installs:67300,  tags:['json','api'], _installed:false, _enabled:false },
+  { id:'space-summariser',   name:'AI Page Summariser',   version:'1.1.0', description:'Summarise any page with your local AI model.',        author:'Space Team', category:'ai',         icon:'✨',  permissions:['tabs','ai'], rating:4.7, installs:53400, tags:['summary','ai'], _installed:false, _enabled:false },
+  { id:'space-tab-suspender',name:'Tab Suspender',        version:'1.1.0', description:'Auto-suspends inactive tabs to save memory.',         author:'Space Team', category:'productivity',icon:'💤', permissions:['tabs'], rating:4.6, installs:32100, tags:['memory','performance'], _installed:false, _enabled:false },
+];
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

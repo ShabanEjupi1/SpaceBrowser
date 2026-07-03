@@ -1,0 +1,809 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Flappy Bird - Space</title>
+  <style>
+    :root {
+      --bg: #0a0a0e; --surface: #13131c; --border: rgba(255,255,255,0.07);
+      --accent: #2563eb; --text: #e8e8f0; --text-sec: #8888aa;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); display: flex; flex-direction: column; align-items: center; min-height: 100vh; font-family: system-ui,-apple-system,sans-serif; color: var(--text); user-select: none; -webkit-app-region: no-drag; }
+    .header { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+    .back-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 7px; color: var(--text-sec); font-size: 12px; padding: 6px 13px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+    .back-btn:hover { color: var(--text); border-color: rgba(37,99,235,0.4); background: rgba(37,99,235,0.06); }
+    .game-title { font-size: 15px; font-weight: 700; }
+    .score-strip { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .score-badge { font-size: 13px; font-weight: 700; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 7px; padding: 5px 14px; font-variant-numeric: tabular-nums; }
+    .score-badge.best { color: #fbbf24; border-color: rgba(251,191,36,0.25); }
+    .score-badge.live { color: #60a5fa; border-color: rgba(96,165,250,0.25); }
+    .diff-row { display: flex; gap: 6px; margin-left: 10px; }
+    .diff-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--text-sec); cursor: pointer; transition: all 0.14s; }
+    .diff-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .diff-btn:hover:not(.active) { background: rgba(255,255,255,0.05); color: var(--text); }
+    .canvas-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; }
+    canvas { border-radius: 14px; box-shadow: 0 24px 64px rgba(0,0,0,0.75), 0 0 0 1.5px rgba(255,255,255,0.07); cursor: pointer; max-width: min(400px,92vw); max-height: min(600px,78vh); }
+    .hint { font-size: 13px; color: var(--text-sec); text-align: center; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" id="backBtn">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span class="game-title">Flappy Bird</span>
+  <div class="score-strip">
+    <div class="diff-row">
+      <button class="diff-btn" data-diff="easy">Easy</button>
+      <button class="diff-btn active" data-diff="normal">Normal</button>
+      <button class="diff-btn" data-diff="hard">Hard</button>
+    </div>
+    <div class="score-badge live">Score: <span id="scoreDisp">0</span></div>
+    <div class="score-badge best">Best: <span id="bestDisp">0</span></div>
+  </div>
+</div>
+<div class="canvas-wrap">
+  <canvas id="canvas" width="400" height="580"></canvas>
+  <p class="hint" id="hint">Click / Space / Up-Arrow to flap</p>
+</div>
+<script>
+'use strict';
+
+// =============================================================================
+// FLAPPY BIRD – Professional ES6 Class Architecture  v3.0
+// =============================================================================
+// Architecture:
+//   GameConfig      – tunable difficulty constants
+//   InputManager    – centralised input (click/touch/keyboard)
+//   ScoreManager    – score, best, combo, medals, localStorage
+//   ScreenShake     – trauma-based camera shake system
+//   Particle        – single VFX feather (pooled)
+//   ParticleSystem  – fixed-size object pool
+//   BirdTrail       – motion-blur ghost trail behind bird
+//   Bird            – physics, wing animation, self-rendering
+//   Pipe            – one pipe pair, gradient rendering
+//   PipeManager     – spawn, update, draw, recycle
+//   Background      – multi-layer parallax (stars, clouds, ground)
+//   Renderer        – HUD overlays, overlay cards, medal rendering
+//   GameLoop        – RAF-driven state machine (idle → playing → dead)
+// =============================================================================
+
+// ─── GameConfig ───────────────────────────────────────────────────────────────
+/**
+ * Holds all tunable constants for each difficulty tier.
+ * Call apply(diff) to hot-swap difficulty mid-session.
+ */
+class GameConfig {
+  static DIFFICULTIES = {
+    easy:   { gravity: 0.28, flapPower: -6.6, pipeSpeed: 2.0, pipeInterval: 110, gapSize: 168 },
+    normal: { gravity: 0.36, flapPower: -7.0, pipeSpeed: 2.7, pipeInterval:  88, gapSize: 145 },
+    hard:   { gravity: 0.44, flapPower: -7.5, pipeSpeed: 3.4, pipeInterval:  72, gapSize: 116 },
+  };
+  /** Pipe width in px */
+  static PIPE_W    = 58;
+  /** Fixed X position of the bird */
+  static BIRD_X    = 90;
+  /** Collision radius of the bird */
+  static BIRD_R    = 14;
+  /** Height of the scrolling ground strip */
+  static GROUND_H  = 58;
+
+  constructor(diff = 'normal') { this.apply(diff); }
+
+  /**
+   * Switch difficulty. Copies diff constants onto this instance.
+   * @param {string} diff  'easy' | 'normal' | 'hard'
+   */
+  apply(diff) {
+    this.difficulty = diff;
+    Object.assign(this, GameConfig.DIFFICULTIES[diff] ?? GameConfig.DIFFICULTIES.normal);
+  }
+}
+
+// ─── InputManager ─────────────────────────────────────────────────────────────
+/**
+ * Centralised input handler. Fires onFlap callback on click, touch, Space, or ↑.
+ * Properly cleans up listeners on destroy().
+ */
+class InputManager {
+  /** @param {HTMLCanvasElement} canvas @param {()=>void} onFlap */
+  constructor(canvas, onFlap) {
+    this._canvas  = canvas;
+    this._onFlap  = onFlap;
+    this._keyH    = e => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); onFlap(); } };
+    this._touchH  = () => onFlap();
+    canvas.addEventListener('click',     onFlap);
+    canvas.addEventListener('touchstart', this._touchH, { passive: true });
+    document.addEventListener('keydown', this._keyH);
+  }
+
+  destroy() {
+    this._canvas.removeEventListener('click',      this._onFlap);
+    this._canvas.removeEventListener('touchstart', this._touchH);
+    document.removeEventListener('keydown',        this._keyH);
+  }
+}
+
+// ─── ScoreManager ─────────────────────────────────────────────────────────────
+/**
+ * Tracks current score, personal best, combo streak, and medal tier.
+ * Persists best score to localStorage.
+ */
+class ScoreManager {
+  static STORAGE_KEY = 'space_flappy_best_v3';
+  static MEDALS = [
+    { threshold: 40, label: 'Platinum', emoji: '🏆', color: '#e2e8f0' },
+    { threshold: 20, label: 'Gold',     emoji: '🥇', color: '#fbbf24' },
+    { threshold: 10, label: 'Silver',   emoji: '🥈', color: '#94a3b8' },
+    { threshold:  0, label: 'Bronze',   emoji: '🥉', color: '#f97316' },
+  ];
+
+  constructor() {
+    this.score    = 0;
+    this.best     = this._load();
+    this.combo    = 0;
+    this._newBest = false;
+    this._scoreEl = document.getElementById('scoreDisp');
+    this._bestEl  = document.getElementById('bestDisp');
+    this._bestEl.textContent = this.best;
+  }
+
+  /** Increment score and combo counter. */
+  addPoint() {
+    this.score++;
+    this.combo++;
+    this._scoreEl.textContent = this.score;
+  }
+
+  /**
+   * Called on death. Saves best, returns earned medal or null.
+   * @returns {{ threshold:number, label:string, emoji:string, color:string }|null}
+   */
+  registerDeath() {
+    this._newBest = this.score > this.best;
+    if (this._newBest) { this.best = this.score; this._bestEl.textContent = this.best; this._save(this.best); }
+    return ScoreManager.MEDALS.find(m => this.score >= m.threshold) ?? null;
+  }
+
+  /** Did the player just set a new personal best? */
+  get isNewBest() { return this._newBest; }
+
+  /** Reset for a new round. */
+  reset() { this.score = 0; this.combo = 0; this._newBest = false; this._scoreEl.textContent = 0; }
+
+  _load()  { try { return +localStorage.getItem(ScoreManager.STORAGE_KEY) || 0; } catch { return 0; } }
+  _save(v) { try { localStorage.setItem(ScoreManager.STORAGE_KEY, v); }          catch {} }
+}
+
+// ─── ScreenShake ──────────────────────────────────────────────────────────────
+/**
+ * Trauma-based camera shake using the power-decay model.
+ * Trauma in [0,1]. Shake magnitude = trauma².
+ */
+class ScreenShake {
+  constructor() { this._trauma = 0; }
+
+  /**
+   * Add trauma (clamped to 1).
+   * @param {number} amount  0-1
+   */
+  add(amount)  { this._trauma = Math.min(1, this._trauma + amount); }
+
+  /** Decay and return current {dx,dy} offset. Returns {dx:0,dy:0} when settled. */
+  update() {
+    if (this._trauma <= 0) return { dx: 0, dy: 0 };
+    this._trauma = Math.max(0, this._trauma - 0.045);
+    const mag = this._trauma * this._trauma * 14;
+    return {
+      dx: (Math.random() * 2 - 1) * mag,
+      dy: (Math.random() * 2 - 1) * mag,
+    };
+  }
+}
+
+// ─── Particle ─────────────────────────────────────────────────────────────────
+/** Single feather/spark VFX. Pooled by ParticleSystem — never constructed mid-game. */
+class Particle {
+  constructor() { this.life = 0; }
+
+  /**
+   * Re-initialise from the pool.
+   * @param {number} x
+   * @param {number} y
+   * @param {string} color  CSS colour string
+   */
+  init(x, y, color = '#fbbf24') {
+    const spd = 2 + Math.random() * 4, ang = Math.random() * Math.PI * 2;
+    this.x     = x;  this.y = y;
+    this.vx    = Math.cos(ang) * spd;
+    this.vy    = Math.sin(ang) * spd - 1.8;
+    this.size  = 3 + Math.random() * 5;
+    this.color = color;
+    this.life  = 1.0;
+    this.decay = 0.020 + Math.random() * 0.018;
+    this.rot   = Math.random() * Math.PI * 2;
+    this.spin  = (Math.random() - 0.5) * 0.32;
+  }
+
+  /** Move one frame. @returns {boolean} still alive */
+  update() {
+    this.vy += 0.18; this.x += this.vx; this.y += this.vy;
+    this.life -= this.decay; this.rot += this.spin;
+    return this.life > 0;
+  }
+
+  /** @param {CanvasRenderingContext2D} ctx */
+  draw(ctx) {
+    if (this.life <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.translate(this.x, this.y); ctx.rotate(this.rot);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(-this.size * 0.5, -this.size * 0.2, this.size, this.size * 0.4);
+    ctx.restore();
+  }
+}
+
+// ─── ParticleSystem ───────────────────────────────────────────────────────────
+/**
+ * Fixed-size object pool. Recycles dead particles to avoid GC pressure.
+ * @param {number} n  Pool size
+ */
+class ParticleSystem {
+  constructor(n = 100) { this._pool = Array.from({ length: n }, () => new Particle()); }
+
+  /**
+   * Emit a burst of particles from position (x, y).
+   * @param {number} x  @param {number} y
+   * @param {number} count  @param {string} color
+   */
+  burst(x, y, count = 20, color = '#fbbf24') {
+    let emitted = 0;
+    for (const p of this._pool) {
+      if (p.life <= 0) { p.init(x, y, color); if (++emitted >= count) break; }
+    }
+  }
+
+  /** Update all live particles and draw them. @param {CanvasRenderingContext2D} ctx */
+  update(ctx) { for (const p of this._pool) { if (p.life > 0) { p.update(); p.draw(ctx); } } }
+}
+
+// ─── BirdTrail ────────────────────────────────────────────────────────────────
+/**
+ * Records the last N bird positions and draws a fading motion-blur trail.
+ * Adds a sense of speed and makes the game feel more polished.
+ */
+class BirdTrail {
+  constructor(length = 8) {
+    this._positions = [];
+    this._length    = length;
+  }
+
+  /** Record current bird position. @param {number} x @param {number} y */
+  push(x, y) {
+    this._positions.push({ x, y });
+    if (this._positions.length > this._length) this._positions.shift();
+  }
+
+  reset() { this._positions = []; }
+
+  /** @param {CanvasRenderingContext2D} ctx */
+  draw(ctx) {
+    const n = this._positions.length;
+    if (n < 2) return;
+    for (let i = 0; i < n; i++) {
+      const { x, y } = this._positions[i];
+      const alpha = (i / n) * 0.28;
+      const radius = GameConfig.BIRD_R * 0.8 * (i / n);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle   = '#fbbf24';
+      ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// ─── Bird ─────────────────────────────────────────────────────────────────────
+/**
+ * Player-controlled bird with Verlet-style physics, squash-and-stretch
+ * animations, detailed eye/beak/wing rendering, and tight AABB collision bounds.
+ */
+class Bird {
+  constructor(cfg) {
+    this._cfg    = cfg;
+    this._wp     = 0;   // wing phase
+    this._sq     = 1;   // squash factor
+    this.y       = 290;
+    this.vy      = 0;
+    this.dead    = false;
+  }
+
+  reset()  { this.y = 290; this.vy = 0; this.dead = false; this._sq = 1; this._wp = 0; }
+
+  /** Apply upward impulse. */
+  flap()   { this.vy = this._cfg.flapPower; this._sq = 0.60; }
+
+  /**
+   * Advance physics one frame.
+   * @param {number} H  Canvas height
+   * @returns {boolean}  True when bird has hit ground/ceiling
+   */
+  update(H) {
+    this.vy  += this._cfg.gravity;
+    this.y   += this.vy;
+    this._wp += 0.30;
+    this._sq  = 1 - (1 - this._sq) * 0.76;
+    const gnd = H - GameConfig.GROUND_H;
+    if (this.y > gnd - GameConfig.BIRD_R || this.y < GameConfig.BIRD_R) this.dead = true;
+    return this.dead;
+  }
+
+  /** @param {CanvasRenderingContext2D} ctx */
+  draw(ctx) {
+    const x = GameConfig.BIRD_X, y = this.y, R = GameConfig.BIRD_R;
+    const tilt = Math.max(-0.58, Math.min(0.52, this.vy * 0.054));
+    const wing = Math.sin(this._wp) * 4.5;
+
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(tilt); ctx.scale(1, this._sq);
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(1, R + 4, R * 0.85, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Body gradient
+    const bg = ctx.createRadialGradient(-3, -5, 1, 0, 0, R + 3);
+    bg.addColorStop(0, '#fef3c7'); bg.addColorStop(0.6, '#fbbf24'); bg.addColorStop(1, '#b45309');
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.ellipse(0, 0, R, R - 2, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Wing
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath(); ctx.ellipse(-2, 3 + wing, 9, 5.5, -0.25, 0, Math.PI * 2); ctx.fill();
+
+    // Belly highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath(); ctx.ellipse(2, 2, 6, 5, 0.2, 0, Math.PI * 2); ctx.fill();
+
+    // Eye white
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(7, -4, 5.5, 0, Math.PI * 2); ctx.fill();
+    // Pupil (shifts with velocity → emotional expressiveness)
+    const ps = Math.min(1.5, this.vy * 0.1);
+    ctx.fillStyle = '#1e1b4b';
+    ctx.beginPath(); ctx.arc(8, -4 + ps, 2.8, 0, Math.PI * 2); ctx.fill();
+    // Pupil highlight
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(9.2, -5.5 + ps, 1, 0, Math.PI * 2); ctx.fill();
+
+    // Beak
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath(); ctx.moveTo(R - 2, -2.5); ctx.lineTo(R + 9, 0); ctx.lineTo(R - 2, 2.5); ctx.closePath(); ctx.fill();
+
+    ctx.restore();
+  }
+
+  /**
+   * Returns a tight axis-aligned bounding box (inset by 4 px each side).
+   * @returns {{ x1:number, y1:number, x2:number, y2:number }}
+   */
+  getBounds() {
+    const R = GameConfig.BIRD_R;
+    return { x1: GameConfig.BIRD_X - R + 4, y1: this.y - R + 4,
+             x2: GameConfig.BIRD_X + R - 4, y2: this.y + R - 4 };
+  }
+}
+
+// ─── Pipe ─────────────────────────────────────────────────────────────────────
+/**
+ * One pipe pair (top + bottom). Renders with gradient fills and cap bevels.
+ * Moves left at pipeSpeed px/frame.
+ */
+class Pipe {
+  /**
+   * @param {number} x        Initial X position
+   * @param {number} top      Height of the top pipe section
+   * @param {GameConfig} cfg
+   */
+  constructor(x, top, cfg) { this.x = x; this.top = top; this.scored = false; this._cfg = cfg; }
+
+  /** Advance position. @returns {boolean} true when pipe has scrolled off screen */
+  update() { this.x -= this._cfg.pipeSpeed; return this.x < -GameConfig.PIPE_W - 10; }
+
+  /**
+   * AABB collision test against bird bounds.
+   * @param {{ x1:number, y1:number, x2:number, y2:number }} b  Bird bounds
+   */
+  collides(b) {
+    const { x, top, _cfg: { gapSize } } = this;
+    const pw = GameConfig.PIPE_W;
+    if (b.x2 > x && b.x1 < x + pw)
+      if (b.y1 < top || b.y2 > top + gapSize) return true;
+    return false;
+  }
+
+  /** @param {CanvasRenderingContext2D} ctx @param {number} H  Canvas height */
+  draw(ctx, H) {
+    const { x, top, _cfg: { gapSize } } = this;
+    const pw  = GameConfig.PIPE_W;
+    const gnd = H - GameConfig.GROUND_H;
+    const btm = top + gapSize;
+
+    const grad = ctx.createLinearGradient(x, 0, x + pw, 0);
+    grad.addColorStop(0, '#14532d'); grad.addColorStop(0.3, '#22c55e'); grad.addColorStop(1, '#166534');
+
+    // Top pipe shaft
+    ctx.fillStyle = grad; ctx.fillRect(x, 0, pw, top);
+    // Top pipe cap
+    ctx.fillStyle = '#16a34a';
+    ctx.beginPath(); ctx.roundRect(x - 6, top - 28, pw + 12, 28, [0, 0, 5, 5]); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.09)'; ctx.fillRect(x - 4, top - 26, 9, 22);
+
+    // Bottom pipe shaft
+    ctx.fillStyle = grad; ctx.fillRect(x, btm, pw, gnd - btm);
+    // Bottom pipe cap
+    ctx.fillStyle = '#16a34a';
+    ctx.beginPath(); ctx.roundRect(x - 6, btm, pw + 12, 28, [5, 5, 0, 0]); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.09)'; ctx.fillRect(x - 4, btm + 4, 9, 22);
+  }
+}
+
+// ─── PipeManager ──────────────────────────────────────────────────────────────
+/**
+ * Spawns, advances, and recycles pipe pairs.
+ * Checks collisions and awards score points as bird passes pipes.
+ */
+class PipeManager {
+  constructor(cfg, W, H) { this._cfg = cfg; this._W = W; this._H = H; this._pipes = []; this._frame = 0; }
+
+  reset() { this._pipes = []; this._frame = 0; }
+
+  /**
+   * Advance all pipes and handle collision/scoring.
+   * @param {Bird} bird
+   * @param {ScoreManager} score
+   * @returns {{ hit: boolean }}
+   */
+  update(bird, score) {
+    this._frame++;
+    let hit = false;
+
+    // Spawn new pipe pair
+    if (this._frame % this._cfg.pipeInterval === 0) {
+      const minT = 80, maxT = this._H - GameConfig.GROUND_H - this._cfg.gapSize - 80;
+      this._pipes.push(new Pipe(this._W + GameConfig.PIPE_W, minT + Math.random() * (maxT - minT), this._cfg));
+    }
+
+    const b = bird.getBounds();
+    this._pipes = this._pipes.filter(p => {
+      const gone = p.update();
+      if (!gone && p.collides(b)) hit = true;
+      if (!p.scored && p.x + GameConfig.PIPE_W < GameConfig.BIRD_X) { p.scored = true; score.addPoint(); }
+      return !gone;
+    });
+
+    return { hit };
+  }
+
+  /** @param {CanvasRenderingContext2D} ctx */
+  draw(ctx) { for (const p of this._pipes) p.draw(ctx, this._H); }
+}
+
+// ─── Background ───────────────────────────────────────────────────────────────
+/**
+ * Multi-layer parallax background:
+ *   Layer 1 – deep space gradient + twinkling stars
+ *   Layer 2 – slow-moving cloud wisps
+ *   Layer 3 – scrolling grass strip
+ */
+class Background {
+  constructor(W, H) {
+    this._W = W; this._H = H; this._gndX = 0;
+    this._clouds = Array.from({ length: 6 }, (_, i) => ({
+      x: i * 80 + Math.random() * 50, y: 40 + Math.random() * 90,
+      rx: 35 + Math.random() * 30, ry: 12 + Math.random() * 10,
+      spd: 0.22 + Math.random() * 0.28,
+    }));
+    this._stars = Array.from({ length: 48 }, () => ({
+      x: Math.random() * W, y: Math.random() * (H * 0.55),
+      r: 0.3 + Math.random() * 1.5, a: 0.2 + Math.random() * 0.7,
+    }));
+  }
+
+  /** @param {CanvasRenderingContext2D} ctx @param {boolean} playing */
+  draw(ctx, playing) {
+    const { _W: W, _H: H } = this;
+
+    // Sky
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#040d1e'); sky.addColorStop(0.5, '#0b1e4a'); sky.addColorStop(1, '#163666');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    for (const s of this._stars) {
+      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Clouds (scroll only while playing)
+    if (playing) for (const c of this._clouds) { c.x -= c.spd; if (c.x < -c.rx * 2) c.x = W + c.rx; }
+    for (const c of this._clouds) {
+      ctx.fillStyle = 'rgba(255,255,255,0.055)';
+      ctx.beginPath(); ctx.ellipse(c.x, c.y, c.rx, c.ry, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.032)';
+      ctx.beginPath(); ctx.ellipse(c.x + 20, c.y + 6, c.rx * 0.55, c.ry * 0.65, 0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Ground
+    const gnd = H - GameConfig.GROUND_H;
+    const gg = ctx.createLinearGradient(0, gnd, 0, H);
+    gg.addColorStop(0, '#4a7c29'); gg.addColorStop(0.1, '#3a6418'); gg.addColorStop(1, '#223a0e');
+    ctx.fillStyle = gg; ctx.fillRect(0, gnd, W, GameConfig.GROUND_H);
+    ctx.fillStyle = '#569630'; ctx.fillRect(0, gnd, W, 11);
+
+    if (playing) this._gndX -= 2.8;
+    ctx.fillStyle = '#68b038';
+    for (let gx = this._gndX % 38; gx < W + 38; gx += 38) {
+      ctx.beginPath(); ctx.ellipse(gx, gnd + 5, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, gnd + 11); ctx.lineTo(W, gnd + 11); ctx.stroke();
+  }
+}
+
+// ─── Renderer ─────────────────────────────────────────────────────────────────
+/**
+ * Responsible for all HUD, overlay, and score card rendering.
+ * Pure rendering — no game state mutations.
+ */
+class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx    = canvas.getContext('2d');
+    this.W      = canvas.width;
+    this.H      = canvas.height;
+  }
+
+  /**
+   * Draw the in-game score badge (top-centre).
+   * @param {number} score
+   */
+  drawHUDScore(score) {
+    const { ctx, W } = this;
+    ctx.fillStyle = 'rgba(0,0,0,0.50)';
+    ctx.beginPath(); ctx.roundRect(W / 2 - 48, 14, 96, 42, 12); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 26px system-ui';
+    ctx.textAlign = 'center'; ctx.fillText(score, W / 2, 46); ctx.textAlign = 'left';
+  }
+
+  /**
+   * Draw combo streak label (shown when combo ≥ 3).
+   * @param {number} combo
+   */
+  drawCombo(combo) {
+    if (combo < 3) return;
+    const { ctx, W } = this;
+    ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = 0.92;
+    ctx.font = `bold ${13 + Math.min(combo, 12)}px system-ui`;
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(`+${combo} COMBO!`, W / 2, 72);
+    ctx.textAlign = 'left'; ctx.restore();
+  }
+
+  /**
+   * Draw a "New Best!" flash label above the HUD score.
+   * @param {boolean} show
+   */
+  drawNewBestFlash(show) {
+    if (!show) return;
+    const { ctx, W } = this;
+    ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = 0.85;
+    ctx.font = 'bold 11px system-ui'; ctx.fillStyle = '#34d399';
+    ctx.fillText('🎉 NEW BEST!', W / 2, 14); ctx.restore();
+  }
+
+  /**
+   * Draw the full-screen overlay card (idle intro or game-over).
+   * @param {string} title
+   * @param {string} sub
+   * @param {number} score
+   * @param {number} best
+   * @param {object|null} medal  Medal definition or null
+   * @param {boolean} isNewBest
+   */
+  drawOverlay(title, sub, score, best, medal, isNewBest = false) {
+    const { ctx, W, H } = this;
+
+    // Dim background
+    ctx.fillStyle = 'rgba(0,0,0,0.66)'; ctx.fillRect(0, 0, W, H);
+
+    const cw = 278, ch = medal ? 200 : 168;
+    const cx = (W - cw) / 2, cy = H / 2 - ch / 2 - 18;
+
+    // Card background
+    ctx.fillStyle = 'rgba(14,17,32,0.98)';
+    ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 18); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.09)'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Medal row
+    ctx.textAlign = 'center'; let y = cy + 40;
+    if (medal) {
+      ctx.font = '38px system-ui'; ctx.fillText(medal.emoji, W / 2, y); y += 44;
+      if (isNewBest) {
+        ctx.font = '11px system-ui'; ctx.fillStyle = '#34d399';
+        ctx.fillText('✦ NEW PERSONAL BEST ✦', W / 2, y - 30);
+      }
+    }
+
+    // Title
+    ctx.fillStyle = '#f1f5f9'; ctx.font = 'bold 22px system-ui'; ctx.fillText(title, W / 2, y); y += 28;
+
+    // Subtitle
+    ctx.fillStyle = '#64748b'; ctx.font = '13px system-ui'; ctx.fillText(sub, W / 2, y); y += 22;
+
+    // Score row
+    if (score > 0) {
+      ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 13px system-ui';
+      ctx.fillText(`Score: ${score}   Best: ${best}`, W / 2, y);
+    }
+
+    // Prompt button
+    ctx.fillStyle = 'rgba(99,102,241,0.88)';
+    const pw = 178, ph = 28;
+    ctx.beginPath(); ctx.roundRect(W / 2 - pw / 2, cy + ch - 40, pw, ph, 8); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '11.5px system-ui';
+    const prompt = title === 'Flappy Bird' ? 'Click / Space / ↑  to start' : 'Click / Space / ↑  to retry';
+    ctx.fillText(prompt, W / 2, cy + ch - 40 + 18);
+
+    ctx.textAlign = 'left';
+  }
+}
+
+// ─── GameLoop ─────────────────────────────────────────────────────────────────
+/**
+ * RAF-driven state machine. States: 'idle' → 'playing' → 'dead'.
+ * Owns all game subsystems and orchestrates per-frame rendering.
+ */
+class GameLoop {
+  constructor(canvas) {
+    this._cfg      = new GameConfig('normal');
+    this._renderer = new Renderer(canvas);
+    this._bg       = new Background(canvas.width, canvas.height);
+    this._bird     = new Bird(this._cfg);
+    this._trail    = new BirdTrail(10);
+    this._pipes    = new PipeManager(this._cfg, canvas.width, canvas.height);
+    this._score    = new ScoreManager();
+    this._fx       = new ParticleSystem(100);
+    this._shake    = new ScreenShake();
+    this._input    = new InputManager(canvas, () => this._handleFlap());
+    this._state    = 'idle';
+    this._medal    = null;
+    this._rafId    = null;
+
+    this._hintEl = document.getElementById('hint');
+
+    // Difficulty buttons
+    document.querySelectorAll('.diff-btn').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      this._cfg.apply(btn.dataset.diff);
+      if (this._state !== 'playing') this._toIdle();
+    }));
+
+    document.getElementById('backBtn').addEventListener('click', GameLoop._goBack);
+  }
+
+  // ── State transitions ───────────────────────────────────────────────────────
+
+  _toIdle() {
+    this._state = 'idle'; this._medal = null;
+    this._bird.reset(); this._pipes.reset(); this._score.reset(); this._trail.reset();
+    this._hintEl.textContent = 'Click / Space / ↑ Arrow to flap';
+  }
+
+  _startRound() {
+    this._state = 'playing'; this._medal = null;
+    this._bird.reset(); this._pipes.reset(); this._score.reset(); this._trail.reset();
+  }
+
+  _handleFlap() {
+    if (this._state === 'idle' || this._state === 'dead') this._startRound();
+    else if (this._state === 'playing') this._bird.flap();
+  }
+
+  // ── RAF loop ────────────────────────────────────────────────────────────────
+
+  start() {
+    if (this._rafId !== null) return;
+    const tick = () => { this._rafId = requestAnimationFrame(tick); this._frame(); };
+    tick();
+  }
+
+  _frame() {
+    const { ctx, W, H } = this._renderer;
+    const playing = this._state === 'playing';
+
+    // Apply screen shake
+    const { dx, dy } = this._shake.update();
+    ctx.save();
+    ctx.translate(dx, dy);
+
+    this._bg.draw(ctx, playing);
+
+    if (this._state === 'idle') {
+      // Hovering idle bird
+      this._bird.y  = H / 2 - 20 + Math.sin(Date.now() / 420) * 9;
+      this._bird.vy = 0;
+      this._trail.push(GameConfig.BIRD_X, this._bird.y);
+      this._trail.draw(ctx);
+      this._bird.draw(ctx);
+      this._renderer.drawOverlay('Flappy Bird', 'A Space original — tap to begin', 0, this._score.best, null);
+
+    } else if (this._state === 'playing') {
+      this._bird.update(H);
+      const { hit } = this._pipes.update(this._bird, this._score);
+      this._pipes.draw(ctx);
+      this._trail.push(GameConfig.BIRD_X, this._bird.y);
+      this._trail.draw(ctx);
+      this._bird.draw(ctx);
+      this._fx.update(ctx);
+      this._renderer.drawHUDScore(this._score.score);
+      this._renderer.drawCombo(this._score.combo);
+      if (hit || this._bird.dead) this._onDeath();
+
+    } else { // 'dead'
+      this._pipes.draw(ctx);
+      this._trail.draw(ctx);
+      this._bird.draw(ctx);
+      this._fx.update(ctx);
+      this._renderer.drawHUDScore(this._score.score);
+      this._renderer.drawNewBestFlash(this._score.isNewBest);
+      this._renderer.drawOverlay(
+        'Game Over', 'Better luck next time!',
+        this._score.score, this._score.best, this._medal, this._score.isNewBest
+      );
+    }
+
+    ctx.restore();
+  }
+
+  // ── Death handling ──────────────────────────────────────────────────────────
+
+  _onDeath() {
+    this._state = 'dead';
+    this._medal = this._score.registerDeath();
+    const bx = GameConfig.BIRD_X, by = this._bird.y;
+    // Multi-colour burst
+    this._fx.burst(bx, by, 24, '#fbbf24');
+    this._fx.burst(bx, by, 12, '#f97316');
+    this._fx.burst(bx, by,  8, '#fff');
+    // Trauma-based screen shake
+    this._shake.add(0.72);
+    this._hintEl.textContent = 'Click / Space / ↑ Arrow to retry';
+  }
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+
+  static async _goBack() {
+    try {
+      const api = window.spaceAPI;
+      if (api?.tabs) {
+        const list = await api.tabs.list();
+        const active = list.find(t => t.isActive);
+        if (active) { api.tabs.navigate(active.id, 'space://games'); return; }
+      }
+    } catch {}
+    history.back();
+  }
+}
+
+// Bootstrap
+new GameLoop(document.getElementById('canvas')).start();
+</script>
+</body>
+</html>

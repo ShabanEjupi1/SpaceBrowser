@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Commando Ops – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:#0a0a0e; display:flex; flex-direction:column; align-items:center;
+      min-height:100vh; font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    .header {
+      width:100%; display:flex; align-items:center; gap:12px;
+      padding:8px 20px; background:#13131c;
+      border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0;
+    }
+    .back-btn {
+      background:#1a1a28; border:1px solid rgba(255,255,255,0.07);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:5px 12px;
+      cursor:pointer; display:flex; align-items:center; gap:5px;
+    }
+    .back-btn:hover { color:#e8e8f0; }
+    .info-row { margin-left:auto; display:flex; gap:14px; align-items:center; font-size:12px; }
+    .badge { background:#1a1a28; border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:4px 12px; font-weight:700; }
+    canvas { display:block; }
+    #overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.88);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+      z-index:10;
+    }
+    #overlay h2 { font-size:26px; }
+    #overlay .sub { font-size:13px; color:#8888aa; max-width:380px; text-align:center; line-height:1.7; }
+    #overlay button { background:#65a30d; border:none; border-radius:8px; color:#fff; font-size:15px; font-weight:700; padding:11px 28px; cursor:pointer; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:15px;font-weight:700;">🪖 Commando Ops</span>
+  <div class="info-row">
+    <div class="badge">Wave <span id="waveEl">1</span></div>
+    <div class="badge">HP: <span id="hpEl">100</span></div>
+    <div class="badge">Kills: <span id="killEl">0</span></div>
+    <div class="badge">Weapon: <span id="weapEl">Rifle</span></div>
+  </div>
+</div>
+<canvas id="c"></canvas>
+<div id="overlay">
+  <h2>🪖 Commando Ops</h2>
+  <div class="sub">
+    Solo top-down military shooter. Survive endless enemy waves.<br>
+    WASD move · Mouse aim + click to shoot<br>
+    Pick up supply crates (📦) for weapon upgrades & health
+  </div>
+  <button onclick="startGame()">Deploy</button>
+</div>
+
+<script>
+'use strict';
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+canvas.style.cursor = 'crosshair';
+
+function resize() {
+  const h = document.querySelector('.header').offsetHeight;
+  canvas.width  = Math.min(900, window.innerWidth);
+  canvas.height = window.innerHeight - h;
+}
+resize();
+window.addEventListener('resize', resize);
+
+let gameActive, keys, player, enemies, bullets, ebullets, pickups, particles, walls;
+let wave, killCount, nextWave, spawnQ, spawnTimer;
+let mouseX, mouseY, mouseDown;
+
+const WEAPONS = [
+  { name:'Rifle',   damage:30, cooldown:18, speed:10, spread:0.05, color:'#94a3b8', bullets:1 },
+  { name:'SMG',     damage:18, cooldown:6,  speed:12, spread:0.15, color:'#22c55e', bullets:1 },
+  { name:'Shotgun', damage:28, cooldown:30, speed:9,  spread:0.4,  color:'#f59e0b', bullets:5 },
+  { name:'RPG',     damage:80, cooldown:50, speed:7,  spread:0.02, color:'#ef4444', bullets:1, explosive:true },
+];
+
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - r.left) * (canvas.width  / r.width);
+  mouseY = (e.clientY - r.top)  * (canvas.height / r.height);
+});
+canvas.addEventListener('mousedown', () => mouseDown = true);
+canvas.addEventListener('mouseup',   () => mouseDown = false);
+
+function makeWalls() {
+  const CW = canvas.width, CH = canvas.height;
+  return [
+    { x:CW*0.25, y:CH*0.2,  w:60, h:70 },
+    { x:CW*0.65, y:CH*0.2,  w:60, h:70 },
+    { x:CW*0.1,  y:CH*0.55, w:70, h:50 },
+    { x:CW*0.8,  y:CH*0.55, w:70, h:50 },
+    { x:CW*0.42, y:CH*0.38, w:80, h:50 },
+    { x:CW*0.3,  y:CH*0.72, w:55, h:60 },
+    { x:CW*0.65, y:CH*0.72, w:55, h:60 },
+  ];
+}
+
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  keys = {}; mouseDown = false; mouseX = canvas.width/2; mouseY = 100;
+  window.onkeydown = e => { keys[e.code] = true; };
+  window.onkeyup   = e => { keys[e.code] = false; };
+
+  const CW = canvas.width, CH = canvas.height;
+  walls    = makeWalls();
+  enemies  = []; bullets = []; ebullets = []; pickups = []; particles = [];
+  wave     = 0; killCount = 0; spawnQ = 0;
+  nextWave = 0; spawnTimer = 0;
+
+  player = {
+    x: CW/2, y: CH/2,
+    r: 15, hp: 100, maxHp:100,
+    weaponIdx: 0, shootCooldown: 0,
+    alive: true,
+  };
+  spawnWave();
+  requestAnimationFrame(loop);
+}
+
+function spawnWave() {
+  wave++;
+  document.getElementById('waveEl').textContent = wave;
+  spawnQ = wave * 4 + 3;
+  spawnTimer = 0;
+  // Drop supply crate
+  const CW = canvas.width, CH = canvas.height;
+  pickups.push({
+    x: CW*0.1 + Math.random()*CW*0.8,
+    y: CH*0.1 + Math.random()*CH*0.8,
+    type: Math.random() < 0.5 ? 'weapon' : 'health',
+  });
+}
+
+let lastTs = 0;
+function loop(ts) {
+  if (!gameActive) return;
+  const dt = Math.min((ts - lastTs)/16.67, 3);
+  lastTs = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  const CW = canvas.width, CH = canvas.height;
+  const spd = 2.8*dt;
+
+  if (!player.alive) return;
+
+  // Move
+  let dx=0,dy=0;
+  if (keys['KeyW']||keys['ArrowUp'])    dy -= 1;
+  if (keys['KeyS']||keys['ArrowDown'])  dy += 1;
+  if (keys['KeyA']||keys['ArrowLeft'])  dx -= 1;
+  if (keys['KeyD']||keys['ArrowRight']) dx += 1;
+  if (dx||dy) {
+    const m=Math.hypot(dx,dy);
+    const nx=player.x+dx/m*spd, ny=player.y+dy/m*spd;
+    if (!collidesWalls(nx, player.y, player.r)) player.x=Math.max(player.r,Math.min(CW-player.r,nx));
+    if (!collidesWalls(player.x, ny, player.r)) player.y=Math.max(player.r,Math.min(CH-player.r,ny));
+  }
+
+  // Shoot
+  const wd = WEAPONS[player.weaponIdx];
+  if (player.shootCooldown > 0) player.shootCooldown -= dt;
+  if (mouseDown && player.shootCooldown <= 0 && mouseX !== undefined) {
+    const adx = mouseX - player.x, ady = mouseY - player.y;
+    const am = Math.hypot(adx,ady)||1;
+    for (let b=0;b<wd.bullets;b++) {
+      const spread = (Math.random()-0.5)*wd.spread;
+      const ang = Math.atan2(ady,adx)+spread;
+      bullets.push({
+        x:player.x, y:player.y,
+        vx:Math.cos(ang)*wd.speed, vy:Math.sin(ang)*wd.speed,
+        damage:wd.damage, color:wd.color, ttl:90, r:4,
+        explosive: wd.explosive||false,
+      });
+    }
+    player.shootCooldown = wd.cooldown;
+  }
+
+  // Spawn enemies
+  spawnTimer -= dt;
+  if (spawnQ > 0 && spawnTimer <= 0) {
+    spawnEnemy();
+    spawnQ--; spawnTimer = Math.max(10, 40-wave*2);
+  }
+
+  // Enemies
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    const dx2 = player.x-e.x, dy2 = player.y-e.y;
+    const d = Math.hypot(dx2,dy2)||1;
+    const espd = (1+wave*0.05)*dt;
+    const nx=e.x+dx2/d*espd, ny=e.y+dy2/d*espd;
+    if (!collidesWalls(nx,e.y,e.r)) e.x=nx;
+    if (!collidesWalls(e.x,ny,e.r)) e.y=ny;
+
+    // Enemy shoot
+    e.shootTimer -= dt;
+    if (e.type === 'soldier' && d < 220 && e.shootTimer <= 0) {
+      const ang = Math.atan2(dy2,dx2) + (Math.random()-0.5)*0.3;
+      ebullets.push({ x:e.x,y:e.y, vx:Math.cos(ang)*5,vy:Math.sin(ang)*5, ttl:80, r:3 });
+      e.shootTimer = 50+Math.random()*30;
+    }
+    // Melee
+    if (d < player.r + e.r) {
+      e.meleeTimer = (e.meleeTimer||0)-dt;
+      if (e.meleeTimer<=0) { player.hp -= e.damage; e.meleeTimer=60; }
+    }
+  });
+
+  // Player bullets
+  for (let i=bullets.length-1;i>=0;i--) {
+    const b=bullets[i];
+    b.x+=b.vx*dt*6; b.y+=b.vy*dt*6; b.ttl-=dt;
+    if (b.ttl<=0||b.x<0||b.x>CW||b.y<0||b.y>CH) { bullets.splice(i,1); continue; }
+    if (collidesWalls(b.x,b.y,b.r)) {
+      if (b.explosive) explosion(b.x,b.y);
+      spawnParticles(b.x,b.y,'#6b7280',4);
+      bullets.splice(i,1); continue;
+    }
+    let hit=false;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      if (Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r) {
+        e.hp -= b.damage;
+        spawnParticles(b.x,b.y,'#ef4444',5);
+        if (b.explosive) explosion(b.x,b.y);
+        if (e.hp<=0) { e.alive=false; killCount++; }
+        hit=true; break;
+      }
+    }
+    if (hit) { bullets.splice(i,1); }
+  }
+
+  // Enemy bullets
+  for (let i=ebullets.length-1;i>=0;i--) {
+    const b=ebullets[i];
+    b.x+=b.vx; b.y+=b.vy; b.ttl--;
+    if (b.ttl<=0||b.x<0||b.x>CW||b.y<0||b.y>CH) { ebullets.splice(i,1); continue; }
+    if (collidesWalls(b.x,b.y,b.r)) { ebullets.splice(i,1); continue; }
+    if (Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r) {
+      player.hp -= 15; ebullets.splice(i,1);
+    }
+  }
+
+  // Pickups
+  for (let i=pickups.length-1;i>=0;i--) {
+    const pk=pickups[i];
+    if (Math.hypot(pk.x-player.x,pk.y-player.y)<player.r+16) {
+      if (pk.type==='weapon') player.weaponIdx=Math.min(WEAPONS.length-1,player.weaponIdx+1);
+      if (pk.type==='health') player.hp=Math.min(player.maxHp, player.hp+40);
+      pickups.splice(i,1);
+    }
+  }
+
+  // Particles
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.ttl--;p.vx*=0.9;p.vy*=0.9;});
+  particles=particles.filter(p=>p.ttl>0);
+  enemies  =enemies.filter(e=>e.alive||(e.deadT=(e.deadT||0)+1)<20);
+
+  // Player hp
+  if (player.hp <= 0) {
+    player.hp=0; player.alive=false;
+    gameActive=false;
+    setTimeout(()=>{
+      const ov=document.getElementById('overlay');
+      ov.querySelector('h2').textContent='💀 Mission Failed';
+      ov.querySelector('.sub').textContent=`Wave ${wave} · ${killCount} kills`;
+      ov.style.display='flex';
+    },600);
+  }
+  // Next wave
+  if (spawnQ<=0 && enemies.filter(e=>e.alive).length===0) spawnWave();
+
+  document.getElementById('hpEl').textContent    = player.hp;
+  document.getElementById('killEl').textContent  = killCount;
+  document.getElementById('weapEl').textContent  = WEAPONS[player.weaponIdx].name;
+}
+
+function spawnEnemy() {
+  const CW=canvas.width, CH=canvas.height;
+  const sides=[
+    {x:Math.random()*CW, y:-25},
+    {x:CW+25, y:Math.random()*CH},
+    {x:Math.random()*CW, y:CH+25},
+    {x:-25, y:Math.random()*CH},
+  ];
+  const s=sides[Math.floor(Math.random()*4)];
+  const type=wave>3&&Math.random()<0.3?'soldier':'grunt';
+  enemies.push({
+    x:s.x,y:s.y, r:14, alive:true, deadT:0, shootTimer:60,
+    hp: type==='soldier'? 40+wave*8 : 25+wave*5,
+    maxHp: type==='soldier'? 40+wave*8 : 25+wave*5,
+    type, color: type==='soldier'?'#dc2626':'#16a34a',
+    damage: type==='soldier'?15:10,
+    meleeTimer:0,
+  });
+}
+
+function explosion(x,y) {
+  spawnParticles(x,y,'#f97316',12);
+  spawnParticles(x,y,'#fbbf24',8);
+  enemies.forEach(e=>{
+    if(!e.alive) return;
+    const d=Math.hypot(e.x-x,e.y-y);
+    if(d<80) e.hp -= 80*(1-d/80);
+    if(e.hp<=0){e.alive=false;killCount++;}
+  });
+}
+
+function collidesWalls(x,y,r) {
+  return walls.some(w=>x+r>w.x&&x-r<w.x+w.w&&y+r>w.y&&y-r<w.y+w.h);
+}
+function spawnParticles(x,y,color,n) {
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, spd=1+Math.random()*4;
+    particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,ttl:20+Math.random()*15,color});
+  }
+}
+
+function draw() {
+  const CW=canvas.width,CH=canvas.height;
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle='#111a10'; ctx.fillRect(0,0,CW,CH);
+  // Grass pattern
+  ctx.strokeStyle='rgba(255,255,255,0.025)'; ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=25){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
+  for(let y=0;y<CH;y+=25){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
+
+  // Walls
+  walls.forEach(w=>{
+    ctx.fillStyle='#374151'; ctx.fillRect(w.x,w.y,w.w,w.h);
+    ctx.fillStyle='#4b5563'; ctx.fillRect(w.x+2,w.y+2,w.w-4,8);
+    ctx.strokeStyle='#6b7280'; ctx.lineWidth=1.5; ctx.strokeRect(w.x,w.y,w.w,w.h);
+  });
+
+  // Particles
+  particles.forEach(p=>{
+    ctx.globalAlpha=p.ttl/35; ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+  }); ctx.globalAlpha=1;
+
+  // Pickups
+  pickups.forEach(pk=>{
+    ctx.fillStyle=pk.type==='weapon'?'#f59e0b33':'#22c55e33';
+    ctx.beginPath(); ctx.arc(pk.x,pk.y,18,0,Math.PI*2); ctx.fill();
+    ctx.font='18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(pk.type==='weapon'?'🔫':'❤️',pk.x,pk.y);
+  });
+
+  // Enemy bullets
+  ebullets.forEach(b=>{
+    ctx.fillStyle='#fbbf24';
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+  });
+
+  // Player bullets
+  bullets.forEach(b=>{
+    const wd=WEAPONS[player.weaponIdx];
+    ctx.fillStyle=b.color; ctx.shadowColor=b.color; ctx.shadowBlur=6;
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  });
+
+  // Enemies
+  enemies.forEach(e=>{
+    const alpha = e.alive?1:Math.max(0,1-(e.deadT||0)/20);
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=e.color;
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill();
+    if(e.type==='soldier'){
+      ctx.fillStyle='#4b5563';
+      ctx.fillRect(e.x-8,e.y-e.r-8,16,8);
+    }
+    if(e.alive){
+      ctx.fillStyle='#1f2937'; ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2,5);
+      ctx.fillStyle=e.type==='soldier'?'#ef4444':'#22c55e';
+      ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2*(e.hp/e.maxHp),5);
+    }
+    ctx.globalAlpha=1;
+  });
+
+  // Player
+  if(player.alive){
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(player.x+3,player.y+4,player.r,player.r*0.5,0,0,Math.PI*2); ctx.fill();
+    // Body
+    ctx.fillStyle='#166534'; ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#15803d'; ctx.beginPath(); ctx.arc(player.x,player.y,player.r-3,0,Math.PI*2); ctx.fill();
+    // Aim line
+    if(mouseX!==undefined){
+      const adx=mouseX-player.x,ady=mouseY-player.y;
+      const am=Math.hypot(adx,ady)||1;
+      const wd=WEAPONS[player.weaponIdx];
+      ctx.strokeStyle=wd.color; ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.moveTo(player.x+adx/am*player.r, player.y+ady/am*player.r);
+      ctx.lineTo(player.x+adx/am*(player.r+16), player.y+ady/am*(player.r+16));
+      ctx.stroke();
+    }
+    // HP bar
+    ctx.fillStyle='#1f2937'; ctx.fillRect(player.x-player.r,player.y-player.r-10,player.r*2,5);
+    ctx.fillStyle=player.hp>50?'#22c55e':player.hp>25?'#f59e0b':'#ef4444';
+    ctx.fillRect(player.x-player.r,player.y-player.r-10,player.r*2*(player.hp/player.maxHp),5);
+  }
+
+  // Crosshair
+  if(mouseX!==undefined){
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(mouseX-12,mouseY); ctx.lineTo(mouseX+12,mouseY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mouseX,mouseY-12); ctx.lineTo(mouseX,mouseY+12); ctx.stroke();
+    ctx.beginPath(); ctx.arc(mouseX,mouseY,6,0,Math.PI*2); ctx.stroke();
+  }
+
+  ctx.textAlign='left';
+}
+
+async function goBack() {
+  try {
+    const api=window.spaceAPI;
+    if(api?.tabs){const tabs=await api.tabs.list();const active=tabs.find(t=>t.isActive);if(active){api.tabs.navigate(active.id,'space://games');return;}}
+  }catch(_){}
+  history.back();
+}
+</script>
+</body>
+</html>

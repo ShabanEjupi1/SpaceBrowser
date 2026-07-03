@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%"   stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0d0d0f"/>
+    </radialGradient>
+    <radialGradient id="planet" cx="40%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="48" fill="url(#bg)"/>
+
+  <!-- Stars -->
+  <circle cx="36"  cy="42"  r="1.5" fill="#a78bfa" opacity="0.9"/>
+  <circle cx="210" cy="68"  r="1"   fill="#c4b5fd" opacity="0.8"/>
+  <circle cx="190" cy="32"  r="1.5" fill="#a78bfa" opacity="0.7"/>
+  <circle cx="48"  cy="190" r="1"   fill="#c4b5fd" opacity="0.6"/>
+  <circle cx="220" cy="190" r="1.5" fill="#a78bfa" opacity="0.8"/>
+  <circle cx="75"  cy="220" r="1"   fill="#c4b5fd" opacity="0.5"/>
+  <circle cx="160" cy="215" r="1"   fill="#a78bfa" opacity="0.6"/>
+
+  <!-- Orbit ring (behind planet) -->
+  <ellipse cx="128" cy="128" rx="92" ry="30"
+           fill="none" stroke="#6366f1" stroke-width="3" opacity="0.35"
+           transform="rotate(-20 128 128)"/>
+
+  <!-- Planet -->
+  <circle cx="128" cy="128" r="54" fill="url(#planet)" filter="url(#glow)"/>
+
+  <!-- Planet highlight -->
+  <ellipse cx="110" cy="108" rx="18" ry="12"
+           fill="white" opacity="0.12" transform="rotate(-15 110 108)"/>
+
+  <!-- Inner orbit / equator line on planet -->
+  <ellipse cx="128" cy="128" rx="54" ry="16"
+           fill="none" stroke="rgba(199,210,254,0.25)" stroke-width="1.5"/>
+
+  <!-- Orbit ring (in front of planet) - clipped to lower half -->
+  <ellipse cx="128" cy="128" rx="92" ry="30"
+           fill="none" stroke="#818cf8" stroke-width="3" opacity="0.6"
+           stroke-dasharray="145 435"
+           transform="rotate(-20 128 128)"/>
+
+  <!-- Orbiting body (moon/satellite) -->
+  <circle cx="205" cy="114" r="7" fill="#c4b5fd" opacity="0.95" filter="url(#glow)"/>
+</svg>

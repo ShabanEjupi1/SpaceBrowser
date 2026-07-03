@@ -1,0 +1,44 @@
+# Space Browser – .gitignore
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+release/
+native/build/
+
+# Vendored third-party (auto-fetched by build script)
+native/include/llama.cpp/
+native/include/nlohmann/
+
+# User models (GGUF files can be gigabytes)
+models/*.gguf
+models/*.bin
+
+# Electron store data
+*.store.json
+*.store.tmp
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript incremental build
+*.tsbuildinfo

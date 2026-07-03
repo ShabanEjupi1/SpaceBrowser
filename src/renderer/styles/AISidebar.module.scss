@@ -1,0 +1,451 @@
+/**
+ * Spaceship Engine – AI Sidebar Design System
+ * ─────────────────────────────────────────────
+ * Identity: warm amber / teal cockpit, clearly distinct from the Space
+ * browser chrome (cobalt blue). No purple, no red, no pink.
+ */
+
+/* ── Panel shell ──────────────────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--ship-bg-secondary);
+  overflow: hidden;
+  /* Subtle left border doubles as a visual seam between Space and Spaceship */
+  border-left: 1px solid var(--ship-border);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  height: 44px;       /* aligns with --addressbar-height for visual harmony */
+  flex-shrink: 0;
+  background: var(--ship-bg-primary);
+  border-bottom: 1px solid var(--ship-border);
+  /* Faint amber glow at the top edge – identifies the cockpit */
+  box-shadow: inset 0 1px 0 rgba(245, 158, 11, 0.20);
+  position: relative;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.headerTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  /* Amber–teal gradient wordmark */
+  background: linear-gradient(110deg, var(--ship-accent-bright) 0%, var(--ship-teal-light) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.modelBadge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  background: var(--ship-teal-dim);
+  border: 1px solid rgba(13, 148, 136, 0.30);
+  border-radius: var(--radius-full);
+  color: var(--ship-teal-light);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.iconBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--ship-text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--ship-bg-hover);
+    color: var(--ship-text-primary);
+  }
+}
+
+/* ── Navigation tabs ──────────────────────────────────────────────────────── */
+
+.navTabs {
+  display: flex;
+  background: var(--ship-bg-primary);
+  border-bottom: 1px solid var(--ship-border);
+  flex-shrink: 0;
+}
+
+/* navTab defined below with full feature set (icons, badge) */
+
+/* ── Main content area ────────────────────────────────────────────────────── */
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--ship-bg-secondary);
+}
+
+.chatLayout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Page context action strip ────────────────────────────────────────────── */
+
+.pageContext {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--ship-border);
+  flex-shrink: 0;
+}
+
+.contextBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ship-bg-tertiary);
+  border: 1px solid var(--ship-border);
+  border-radius: var(--radius-md);
+  color: var(--ship-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-base), color var(--transition-base),
+              background var(--transition-base);
+
+  &:hover:not(:disabled) {
+    border-color: var(--ship-accent);
+    color: var(--ship-accent-light);
+    background: var(--ship-accent-dim);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+/* ── No-model prompt ──────────────────────────────────────────────────────── */
+
+.noModel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  gap: var(--space-4);
+  flex: 1;
+  overflow-y: auto;
+
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ship-text-primary);
+    letter-spacing: 0.02em;
+  }
+
+  p {
+    font-size: 13px;
+    color: var(--ship-text-muted);
+    max-width: 280px;
+    line-height: 1.6;
+  }
+}
+
+.noModelIcon {
+  opacity: 0.75;
+}
+
+/* ── Quick model list ─────────────────────────────────────────────────────── */
+
+.quickModelList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.quickModelBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ship-bg-tertiary);
+  border: 1px solid var(--ship-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--ship-text-secondary);
+  text-align: left;
+  transition: border-color var(--transition-fast), background var(--transition-fast),
+              color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    border-color: var(--ship-accent);
+    background: var(--ship-accent-dim);
+    color: var(--ship-text-primary);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+}
+
+.qmName {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ship-text-primary);
+}
+
+.qmSize {
+  font-size: 11px;
+  color: var(--ship-text-muted);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.viewAllBtn {
+  background: transparent;
+  border: none;
+  color: var(--ship-teal-light);
+  font-size: 12px;
+  cursor: pointer;
+  padding: var(--space-1);
+
+  &:hover {
+    color: var(--ship-accent-bright);
+    text-decoration: underline;
+  }
+}
+
+/* ── Import button ────────────────────────────────────────────────────────── */
+
+.importBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--ship-accent);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-md);
+  color: #0b0d0f;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+
+  &:hover {
+    background: var(--ship-accent-bright);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.30);
+  }
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ship-border);
+  border-top-color: var(--ship-accent-bright);
+  border-radius: 50%;
+  animation: shipSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes shipSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Engine status bar ────────────────────────────────────────────────────── */
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-4);
+  background: var(--ship-bg-primary);
+  border-bottom: 1px solid var(--ship-border);
+  flex-shrink: 0;
+  min-height: 26px;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background var(--transition-base), box-shadow var(--transition-base);
+}
+
+.statusIdle {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.statusReady {
+  background: #34d399;    /* emerald – engine is hot */
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.55);
+  animation: pulseReady 2.5s ease-in-out infinite;
+}
+
+.statusGenerating {
+  background: var(--ship-accent-bright);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.70);
+  animation: pulseGenerate 0.8s ease-in-out infinite;
+}
+
+@keyframes pulseReady {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+@keyframes pulseGenerate {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.70); }
+  50%       { box-shadow: 0 0 16px rgba(245, 158, 11, 0.95); }
+}
+
+.statusLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ship-text-muted);
+  flex: 1;
+}
+
+.tokenCounter {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ship-text-muted);
+  background: var(--ship-bg-tertiary);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--ship-border);
+  letter-spacing: 0.02em;
+}
+
+/* ── Nav tab icons + badge ─────────────────────────────────────────────────── */
+
+.navTab {
+  flex: 1;
+  padding: 7px var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--ship-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  position: relative;
+
+  &:hover {
+    color: var(--ship-text-secondary);
+  }
+
+  &.active {
+    color: var(--ship-accent-bright);
+    border-bottom-color: var(--ship-accent-bright);
+  }
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--ship-accent-dim);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-full);
+  color: var(--ship-accent-bright);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* ── Export flash ─────────────────────────────────────────────────────────── */
+
+.exportFlash {
+  background: var(--ship-teal-dim) !important;
+  color: var(--ship-teal-light) !important;
+  animation: exportPop 0.3s ease;
+}
+
+@keyframes exportPop {
+  0%   { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px var(--space-4);
+  border-top: 1px solid var(--ship-border);
+  background: var(--ship-bg-primary);
+}
+
+.footerHint {
+  font-size: 10px;
+  color: var(--ship-text-muted);
+  letter-spacing: 0.04em;
+  user-select: none;
+
+  kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    background: var(--ship-bg-tertiary);
+    border: 1px solid var(--ship-border);
+    border-radius: 4px;
+    font-size: 9px;
+    font-family: var(--font-mono, monospace);
+    color: var(--ship-text-secondary);
+    margin: 0 1px;
+  }
+}

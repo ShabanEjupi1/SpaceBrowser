@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Cowboy Shooting – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html, body {
+      background:#1a0a00; width:100%; height:100%;
+      font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    body { display:flex; flex-direction:column; }
+
+    .header {
+      width:100%; display:flex; align-items:center; gap:12px;
+      padding:10px 20px; background:rgba(20,10,0,0.97);
+      border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0; z-index:10;
+    }
+    .back-btn {
+      background:#2a1500; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:6px 13px;
+      cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:6px;
+    }
+    .back-btn:hover { color:#e8e8f0; border-color:rgba(251,191,36,0.4); }
+    .info-row { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:13px; }
+    .badge {
+      background:#2a1500; border:1px solid rgba(255,255,255,0.1);
+      border-radius:7px; padding:5px 14px; font-weight:700; white-space:nowrap;
+    }
+    .badge.hot { border-color:rgba(239,68,68,0.5); color:#f87171; }
+
+    #gameCanvas { display:block; flex:1; cursor:crosshair; width:100%; }
+
+    #overlay {
+      position:fixed; inset:0; top:50px;
+      background:rgba(10,5,0,0.90);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:20px; z-index:20; backdrop-filter:blur(4px);
+    }
+    #overlay h2 {
+      font-size:38px; font-weight:800; color:#fbbf24;
+      text-shadow:0 0 30px rgba(251,191,36,0.55);
+    }
+    .sub { font-size:14px; color:#92400e; text-align:center; line-height:1.85; max-width:400px; }
+    .final { font-size:20px; font-weight:700; color:#f59e0b; }
+    .play-btn {
+      background:linear-gradient(135deg,#b45309,#92400e);
+      border:none; border-radius:10px; color:#fff;
+      font-size:16px; font-weight:700; padding:13px 40px;
+      cursor:pointer; transition:opacity 0.15s;
+      box-shadow:0 4px 24px rgba(180,83,9,0.45);
+    }
+    .play-btn:hover { opacity:0.85; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:15px;font-weight:700;">&#x1F920; Cowboy Shooting</span>
+  <div class="info-row">
+    <div class="badge" id="scoreBadge">Score: 0</div>
+    <div class="badge" id="waveBadge">Wave 1</div>
+    <div class="badge" id="timeBadge">&#x23F1; 60s</div>
+    <div class="badge hot" id="ammoBadge">&#x1F52B; 6/6</div>
+  </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="overlay">
+  <h2>&#x1F920; Cowboy Shooting</h2>
+  <div class="sub">
+    Outlaws pop up from behind cover &#8212; shoot them before they escape!<br>
+    <strong>Click</strong> to shoot &nbsp;&#183;&nbsp; <strong>R</strong> to reload<br>
+    Don't shoot the Sheriff (&#11088;) &#8212; that costs you points!
+  </div>
+  <button class="play-btn" onclick="startGame()">Draw!</button>
+</div>
+
+<script>
+'use strict';
+
+var canvas  = document.getElementById('gameCanvas');
+var ctx     = canvas.getContext('2d');
+var overlay = document.getElementById('overlay');
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+var GROUND_RATIO = 0.72;
+var MAX_AMMO     = 6;
+var RELOAD_MS    = 1800;
+var TARGET_W     = 54;
+var TARGET_H     = 76;
+var COVER_RATIO  = 0.28;
+var BAR_W = 116, BAR_H_RATIO = 0.20;
+var BAR_FX = [0.10, 0.28, 0.50, 0.72, 0.90];
+var OUTLAW_BODY  = ['#7c3aed','#dc2626','#0369a1','#065f46','#78350f'];
+var OUTLAW_HAT   = ['#1c1917','#7f1d1d','#1e3a5f','#14532d','#292524'];
+
+// ── Model ─────────────────────────────────────────────────────────────────────
+class CowboyModel {
+  constructor() {
+    this.state = 'idle';
+    this.score = 0;
+    this.wave = 1;
+    this.timeLeft = 60;
+    this.ammo = MAX_AMMO;
+    this.reloading = false;
+    this.targets = [];
+    this.particles = [];
+    this.floats = [];
+    this.bulletHoles = [];
+    this.muzzle = null;
+    this.frame = 0;
+  }
+
+  makeTarget(id, viewWidth) {
+    let barIdx = Math.floor(Math.random() * BAR_FX.length);
+    let x = viewWidth * BAR_FX[barIdx] + (Math.random() - 0.5) * 30;
+    x = Math.max(TARGET_W * 0.6, Math.min(viewWidth - TARGET_W * 0.6, x));
+
+    let isSheriff = Math.random() < (this.wave > 4 ? 0.18 : 0.10);
+    let riseSpd   = 0.030 + this.wave * 0.006 + Math.random() * 0.012;
+    let stayMs    = Math.max(500, 1900 - this.wave * 130 + Math.random() * 400);
+    let body  = isSheriff ? '#d97706' : OUTLAW_BODY[Math.floor(Math.random() * OUTLAW_BODY.length)];
+    let hat   = isSheriff ? '#78350f' : OUTLAW_HAT[Math.floor(Math.random() * OUTLAW_HAT.length)];
+
+    return {
+      id: id, x: x, isSheriff: isSheriff,
+      body: body, hat: hat,
+      phase: 'delay',
+      delay: id * Math.max(0, 380 - this.wave * 22),
+      riseSpd: riseSpd, riseP: 0,
+      stayMs: stayMs, stayTimer: 0,
+      hit: false,
+      pts: isSheriff ? -200 : (80 + this.wave * 20)
+    };
+  }
+
+  spawnWave(viewWidth) {
+    let count = Math.min(8, 2 + this.wave + Math.floor(Math.random() * 2));
+    this.targets = [];
+    for (let i = 0; i < count; i++) this.targets.push(this.makeTarget(i, viewWidth));
+  }
+
+  update() {
+    this.frame++;
+    let allDone = true;
+
+    for (let i = 0; i < this.targets.length; i++) {
+      let t = this.targets[i];
+      if (t.phase === 'delay') {
+        allDone = false;
+        t.delay -= 16;
+        if (t.delay <= 0) { t.delay = 0; t.phase = 'rising'; }
+      } else if (t.phase === 'rising') {
+        allDone = false;
+        t.riseP = Math.min(1, t.riseP + t.riseSpd);
+        if (t.riseP >= 1) { t.phase = 'visible'; t.stayTimer = 0; }
+      } else if (t.phase === 'visible') {
+        allDone = false;
+        t.stayTimer += 16;
+        if (t.stayTimer >= t.stayMs) t.phase = 'falling';
+      } else if (t.phase === 'falling') {
+        allDone = false;
+        t.riseP = Math.max(0, t.riseP - t.riseSpd * 1.4);
+        if (t.riseP <= 0) t.phase = 'dead';
+      }
+    }
+
+    if (allDone || this.targets.every(t => t.phase === 'dead')) {
+      return 'nextWave';
+    }
+
+    this.particles = this.particles.filter(p => p.life > 0);
+    this.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.vx *= 0.95; p.life--; });
+
+    this.floats = this.floats.filter(t => t.life > 0);
+    this.floats.forEach(t => { t.y += t.vy; t.life--; });
+
+    this.bulletHoles = this.bulletHoles.filter(b => b.life > 0);
+    this.bulletHoles.forEach(b => { b.life--; });
+
+    if (this.muzzle) { this.muzzle.life--; if (this.muzzle.life <= 0) this.muzzle = null; }
+    return 'playing';
+  }
+
+  handleShot(mouseX, mouseY, viewWidth, viewHeight, onHitSheriff, onHitOutlaw, onMiss) {
+    if (this.state !== 'playing' || this.ammo <= 0 || this.reloading) return false;
+    this.ammo--;
+    this.muzzle = { x: mouseX, y: mouseY, life: 6 };
+
+    let groundY = viewHeight * GROUND_RATIO;
+    let visibleH = TARGET_H * (1 - COVER_RATIO);
+
+    let hit = false;
+    for (let i = this.targets.length - 1; i >= 0; i--) {
+      let t = this.targets[i];
+      if (t.hit || t.phase !== 'visible' || t.delay > 0) continue;
+      let ty = groundY - visibleH * t.riseP;
+      let tx = t.x - TARGET_W / 2;
+      if (mouseX >= tx && mouseX <= tx + TARGET_W && mouseY >= ty && mouseY <= ty + visibleH * t.riseP) {
+        t.hit = true; t.phase = 'falling'; hit = true;
+        if (t.isSheriff) {
+          this.score = Math.max(0, this.score + t.pts);
+          onHitSheriff(t, ty, visibleH);
+        } else {
+          this.score += t.pts;
+          onHitOutlaw(t, ty, visibleH);
+        }
+        break;
+      }
+    }
+    if (!hit) {
+      this.bulletHoles.push({ x: mouseX, y: mouseY, life: 160, ml: 160 });
+      onMiss();
+    }
+    return true;
+  }
+
+  spawnHit(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var s = 2 + Math.random() * 5;
+      this.particles.push({ x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s-3, r:3+Math.random()*3, color:color, life:30+Math.random()*15, ml:45 });
+    }
+  }
+
+  spawnSheriffHit(x, y) {
+    for (var i = 0; i < 22; i++) {
+        var a = Math.random() * Math.PI * 2;
+        var s = 2 + Math.random() * 8;
+        this.particles.push({ x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s-4, r:4+Math.random()*4, color:'#fbbf24', life:42, ml:42 });
+    }
+  }
+
+  addFloat(x, y, val, color) {
+    this.floats.push({ x:x, y:y, val:(val>=0?'+':'')+val, color:color, life:42, ml:42, vy:-1.3 });
+  }
+}
+
+// ── View ──────────────────────────────────────────────────────────────────────
+class CowboyView {
+  constructor(canvas, ctx, overlay) {
+    this.canvas = canvas;
+    this.ctx = ctx;
+    this.overlay = overlay;
+    this.mouseX = 0;
+    this.mouseY = 0;
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight - 50;
+  }
+
+  updateMouse(e) {
+    let r = this.canvas.getBoundingClientRect();
+    this.mouseX = (e.clientX - r.left) * (this.canvas.width / r.width);
+    this.mouseY = (e.clientY - r.top) * (this.canvas.height / r.height);
+  }
+
+  updateScoreHUD(score) { document.getElementById('scoreBadge').textContent = 'Score: ' + score; }
+  updateAmmoHUD(ammo, isReloading) {
+    let el = document.getElementById('ammoBadge');
+    if (isReloading) { el.textContent = 'Reloading...'; el.style.color = '#fbbf24'; }
+    else { el.textContent = '\uD83D\uDD2B ' + ammo + '/' + MAX_AMMO; el.style.color = ammo <= 1 ? '#ef4444' : ''; }
+  }
+  updateWaveHUD(wave) { document.getElementById('waveBadge').textContent = 'Wave ' + wave; }
+  updateTimeHUD(timeLeft) { document.getElementById('timeBadge').textContent = '\u23F1 ' + timeLeft + 's'; }
+
+  showGameOver(score, wave, onReplay) {
+    this.overlay.innerHTML = '<h2>&#x1F3C6; Game Over</h2>'
+      + '<div class="sub">The sun sets on the frontier&hellip;</div>'
+      + '<div class="final">Final Score: ' + score + ' &ensp;&middot;&ensp; Wave ' + wave + '</div>'
+      + '<button class="play-btn" id="replayBtn">Play Again</button>';
+    this.overlay.style.display = 'flex';
+    document.getElementById('replayBtn').onclick = onReplay;
+  }
+
+  hideOverlay() { this.overlay.style.display = 'none'; }
+  shakeCanvas() {
+    this.canvas.style.outline = '4px solid rgba(239,68,68,0.7)';
+    setTimeout(() => { this.canvas.style.outline = ''; }, 250);
+  }
+
+  drawScene(model) {
+    let CW = this.canvas.width, CH = this.canvas.height;
+    let groundY = CH * GROUND_RATIO;
+
+    // Sky
+    let sky = this.ctx.createLinearGradient(0, 0, 0, groundY);
+    sky.addColorStop(0, '#1a0a00'); sky.addColorStop(0.5, '#7c2d12'); sky.addColorStop(1, '#dc7d38');
+    this.ctx.fillStyle = sky; this.ctx.fillRect(0, 0, CW, groundY);
+
+    // Sun
+    let sx = CW * 0.82, sy = groundY * 0.28;
+    let sg = this.ctx.createRadialGradient(sx, sy, 4, sx, sy, 65);
+    sg.addColorStop(0, '#fef3c7'); sg.addColorStop(0.35, '#fbbf24'); sg.addColorStop(1, 'transparent');
+    this.ctx.fillStyle = sg; this.ctx.beginPath(); this.ctx.arc(sx, sy, 65, 0, Math.PI * 2); this.ctx.fill();
+
+    // Mountains
+    this.ctx.fillStyle = '#78350f';
+    this.ctx.beginPath(); this.ctx.moveTo(0, groundY);
+    let peaks = [[0.08,0.67],[0.18,0.46],[0.33,0.63],[0.50,0.37],[0.65,0.54],[0.79,0.39],[0.92,0.60],[1,0.66]];
+    for (let pi = 0; pi < peaks.length; pi++) {
+      this.ctx.lineTo(CW * peaks[pi][0], groundY * peaks[pi][1] + groundY * 0.10);
+    }
+    this.ctx.lineTo(CW, groundY); this.ctx.closePath(); this.ctx.fill();
+
+    // Ground
+    let gg = this.ctx.createLinearGradient(0, groundY, 0, CH);
+    gg.addColorStop(0, '#92400e'); gg.addColorStop(0.4, '#78350f'); gg.addColorStop(1, '#451a03');
+    this.ctx.fillStyle = gg; this.ctx.fillRect(0, groundY, CW, CH - groundY);
+    this.ctx.strokeStyle = 'rgba(0,0,0,0.14)'; this.ctx.lineWidth = 1;
+    for (let gl = 1; gl <= 4; gl++) {
+      let gy = groundY + (CH - groundY) * (gl / 5);
+      this.ctx.beginPath(); this.ctx.moveTo(0, gy); this.ctx.lineTo(CW, gy); this.ctx.stroke();
+    }
+
+    this.drawBarriers(groundY);
+
+    // Bullet holes
+    model.bulletHoles.forEach(b => {
+      let a = b.life / b.ml;
+      this.ctx.save(); this.ctx.globalAlpha = a * 0.7;
+      this.ctx.fillStyle = '#111';
+      this.ctx.beginPath(); this.ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); this.ctx.fill();
+      this.ctx.strokeStyle = '#78350f'; this.ctx.lineWidth = 1; this.ctx.stroke();
+      this.ctx.restore();
+    });
+
+    // Targets
+    model.targets.forEach(t => this.drawTarget(t, groundY));
+
+    // Particles
+    model.particles.forEach(p => {
+      let a = p.life / p.ml;
+      this.ctx.save(); this.ctx.globalAlpha = a;
+      this.ctx.fillStyle = p.color;
+      this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.r * a + 0.5, 0, Math.PI * 2); this.ctx.fill();
+      this.ctx.restore();
+    });
+
+    // Floating text
+    model.floats.forEach(t => {
+      let a = t.life / t.ml;
+      this.ctx.save(); this.ctx.globalAlpha = a; this.ctx.fillStyle = t.color;
+      this.ctx.font = 'bold 18px system-ui'; this.ctx.textAlign = 'center';
+      this.ctx.shadowColor = t.color; this.ctx.shadowBlur = 6;
+      this.ctx.fillText(t.val, t.x, t.y);
+      this.ctx.restore();
+    });
+
+    // Muzzle flash
+    if (model.muzzle) {
+      let ma = model.muzzle.life / 6;
+      this.ctx.save(); this.ctx.globalAlpha = ma * 0.8;
+      let mg = this.ctx.createRadialGradient(model.muzzle.x, model.muzzle.y, 2, model.muzzle.x, model.muzzle.y, 30);
+      mg.addColorStop(0, '#fff'); mg.addColorStop(0.4, '#fbbf24'); mg.addColorStop(1, 'transparent');
+      this.ctx.fillStyle = mg; this.ctx.beginPath(); this.ctx.arc(model.muzzle.x, model.muzzle.y, 30, 0, Math.PI * 2); this.ctx.fill();
+      this.ctx.restore();
+    }
+
+    this.drawCrosshair(this.mouseX, this.mouseY, model.ammo, model.reloading);
+  }
+
+  drawBarriers(groundY) {
+    let CW = this.canvas.width;
+    let barH = groundY * BAR_H_RATIO + TARGET_H * COVER_RATIO;
+    BAR_FX.forEach(fx => {
+      let bx = CW * fx - BAR_W / 2;
+      let by = groundY - barH;
+      // Shadow
+      this.ctx.fillStyle = 'rgba(0,0,0,0.3)'; this.ctx.fillRect(bx + 4, by + 4, BAR_W, barH);
+      // Wood
+      let wg = this.ctx.createLinearGradient(bx, by, bx + BAR_W, by);
+      wg.addColorStop(0, '#92400e'); wg.addColorStop(0.35, '#b45309'); wg.addColorStop(0.65, '#92400e'); wg.addColorStop(1, '#78350f');
+      this.ctx.fillStyle = wg; this.ctx.fillRect(bx, by, BAR_W, barH);
+      // Grain lines
+      this.ctx.strokeStyle = 'rgba(0,0,0,0.22)'; this.ctx.lineWidth = 1.5;
+      for (let pl = 1; pl < 3; pl++) {
+        let py = by + (barH / 3) * pl;
+        this.ctx.beginPath(); this.ctx.moveTo(bx, py); this.ctx.lineTo(bx + BAR_W, py); this.ctx.stroke();
+      }
+      // Nails
+      [[12,7],[BAR_W-12,7],[12,barH-7],[BAR_W-12,barH-7]].forEach(n => {
+        this.ctx.fillStyle = '#6b3a0a';
+        this.ctx.beginPath(); this.ctx.arc(bx+n[0], by+n[1], 3, 0, Math.PI*2); this.ctx.fill();
+      });
+      // Top highlight
+      this.ctx.strokeStyle = 'rgba(255,255,255,0.09)'; this.ctx.lineWidth = 1;
+      this.ctx.beginPath(); this.ctx.moveTo(bx, by); this.ctx.lineTo(bx + BAR_W, by); this.ctx.stroke();
+    });
+  }
+
+  drawTarget(t, groundY) {
+    if (t.phase === 'dead' || t.phase === 'delay') return;
+    if (t.riseP <= 0) return;
+    let visH = TARGET_H * (1 - COVER_RATIO);
+    let tx   = t.x - TARGET_W / 2;
+    let ty   = groundY - visH * t.riseP;
+
+    this.ctx.save();
+    if (t.hit) {
+      this.ctx.translate(t.x, ty + visH * 0.5);
+      this.ctx.rotate((1 - t.riseP) * 0.9);
+      this.ctx.translate(-t.x, -(ty + visH * 0.5));
+    }
+
+    this.ctx.beginPath(); this.ctx.rect(tx, ty, TARGET_W, visH * t.riseP + 2); this.ctx.clip();
+    this.ctx.fillStyle = t.body;
+    this.ctx.beginPath(); this.ctx.roundRect(tx, ty, TARGET_W, visH, 8); this.ctx.fill();
+    this.ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    this.ctx.beginPath(); this.ctx.ellipse(t.x, ty + 18, 16, 19, 0, 0, Math.PI * 2); this.ctx.fill();
+
+    this.ctx.fillStyle = t.hit ? '#ef4444' : '#fff';
+    this.ctx.beginPath(); this.ctx.arc(t.x - 7, ty + 14, 4, 0, Math.PI * 2); this.ctx.fill();
+    this.ctx.beginPath(); this.ctx.arc(t.x + 7, ty + 14, 4, 0, Math.PI * 2); this.ctx.fill();
+    this.ctx.fillStyle = '#111';
+    this.ctx.beginPath(); this.ctx.arc(t.x - 7, ty + 14, 2, 0, Math.PI * 2); this.ctx.fill();
+    this.ctx.beginPath(); this.ctx.arc(t.x + 7, ty + 14, 2, 0, Math.PI * 2); this.ctx.fill();
+
+    this.ctx.fillStyle = '#fff';
+    this.ctx.beginPath(); this.ctx.arc(t.x - 6, ty + 13, 0.9, 0, Math.PI * 2); this.ctx.fill();
+    this.ctx.beginPath(); this.ctx.arc(t.x + 8, ty + 13, 0.9, 0, Math.PI * 2); this.ctx.fill();
+
+    this.ctx.strokeStyle = t.hit ? '#ef4444' : 'rgba(0,0,0,0.35)';
+    this.ctx.lineWidth = 2; this.ctx.lineCap = 'round';
+    this.ctx.beginPath();
+    if (t.hit) { this.ctx.moveTo(t.x - 6, ty + 27); this.ctx.lineTo(t.x + 6, ty + 27); }
+    else { this.ctx.arc(t.x, ty + 23, 6, 0.2, Math.PI - 0.2); }
+    this.ctx.stroke();
+
+    let hatY = ty - 2;
+    this.ctx.fillStyle = t.hat;
+    this.ctx.beginPath(); this.ctx.ellipse(t.x, hatY + 6, TARGET_W * 0.6, 6, 0, 0, Math.PI * 2); this.ctx.fill();
+    this.ctx.beginPath(); this.ctx.roundRect(t.x - 16, hatY - 24, 32, 30, [6, 6, 0, 0]); this.ctx.fill();
+    this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    this.ctx.fillRect(t.x - 16, hatY + 3, 32, 5);
+
+    if (t.isSheriff) {
+      this.ctx.fillStyle = '#fbbf24';
+      this.ctx.shadowColor = '#fbbf24'; this.ctx.shadowBlur = 10;
+      this.drawStar(t.x, ty + 38, 5, 9, 4.5);
+      this.ctx.shadowBlur = 0;
+    }
+    this.ctx.restore();
+  }
+
+  drawStar(cx, cy, pts, outer, inner) {
+    this.ctx.beginPath();
+    for (let i = 0; i < pts * 2; i++) {
+        let r = i % 2 === 0 ? outer : inner;
+        let a = (i / (pts * 2)) * Math.PI * 2 - Math.PI / 2;
+        if (i === 0) this.ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+        else this.ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    }
+    this.ctx.closePath(); this.ctx.fill();
+  }
+
+  drawCrosshair(x, y, ammo, reloading) {
+    let size = 14, gap = 5;
+    let empty = ammo === 0 || reloading;
+    this.ctx.save();
+    this.ctx.strokeStyle = empty ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.9)';
+    this.ctx.shadowColor  = empty ? '#ef4444' : '#fff';
+    this.ctx.shadowBlur   = 4;
+    this.ctx.lineWidth    = 1.8;
+    this.ctx.beginPath(); this.ctx.moveTo(x - size, y); this.ctx.lineTo(x - gap, y); this.ctx.stroke();
+    this.ctx.beginPath(); this.ctx.moveTo(x + gap,  y); this.ctx.lineTo(x + size, y); this.ctx.stroke();
+    this.ctx.beginPath(); this.ctx.moveTo(x, y - size); this.ctx.lineTo(x, y - gap); this.ctx.stroke();
+    this.ctx.beginPath(); this.ctx.moveTo(x, y + gap);  this.ctx.lineTo(x, y + size); this.ctx.stroke();
+    this.ctx.fillStyle = this.ctx.strokeStyle;
+    this.ctx.beginPath(); this.ctx.arc(x, y, 1.8, 0, Math.PI * 2); this.ctx.fill();
+    this.ctx.restore();
+  }
+
+  drawIdle() {
+    let CW = this.canvas.width, CH = this.canvas.height;
+    let groundY = CH * GROUND_RATIO;
+    let sky = this.ctx.createLinearGradient(0, 0, 0, groundY);
+    sky.addColorStop(0, '#1a0a00'); sky.addColorStop(1, '#dc7d38');
+    this.ctx.fillStyle = sky; this.ctx.fillRect(0, 0, CW, groundY);
+    this.ctx.fillStyle = '#78350f'; this.ctx.fillRect(0, groundY, CW, CH - groundY);
+    let barH = groundY * BAR_H_RATIO + TARGET_H * COVER_RATIO;
+    BAR_FX.forEach(fx => {
+      let bx = CW * fx - BAR_W / 2, by = groundY - barH;
+      let wg = this.ctx.createLinearGradient(bx, by, bx + BAR_W, by);
+      wg.addColorStop(0, '#92400e'); wg.addColorStop(0.5, '#b45309'); wg.addColorStop(1, '#78350f');
+      this.ctx.fillStyle = wg; this.ctx.fillRect(bx, by, BAR_W, barH);
+    });
+  }
+}
+
+// ── Controller ────────────────────────────────────────────────────────────────
+class CowboyController {
+  constructor(model, view) {
+    this.model = model;
+    this.view = view;
+    this.rafId = 0;
+    this.timerHandle = null;
+    this.reloadHandle = null;
+
+    this.bindEvents();
+    this.view.resize();
+    this.view.drawIdle();
+  }
+
+  bindEvents() {
+    window.addEventListener('resize', () => {
+      this.view.resize();
+      if (this.model.state !== 'playing') this.view.drawIdle();
+    });
+
+    this.view.canvas.addEventListener('mousemove', (e) => this.view.updateMouse(e));
+
+    this.view.canvas.addEventListener('click', () => {
+      let shotFired = this.model.handleShot(
+        this.view.mouseX, this.view.mouseY,
+        this.view.canvas.width, this.view.canvas.height,
+        (t, ty, visibleH) => { // onHitSheriff
+            this.model.spawnSheriffHit(t.x, ty + visibleH * 0.4);
+            this.model.addFloat(t.x, ty, t.pts, '#ef4444');
+            this.view.shakeCanvas();
+            this.view.updateScoreHUD(this.model.score);
+        },
+        (t, ty, visibleH) => { // onHitOutlaw
+            this.model.spawnHit(t.x, ty + visibleH * 0.4, t.body, 14);
+            this.model.addFloat(t.x, ty, t.pts, '#4ade80');
+            this.view.updateScoreHUD(this.model.score);
+        },
+        () => {} // onMiss
+      );
+
+      if (shotFired) {
+        this.view.updateAmmoHUD(this.model.ammo, this.model.reloading);
+        if (this.model.ammo === 0 && !this.model.reloading) this.triggerReload();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyR' && this.model.state === 'playing' && !this.model.reloading && this.model.ammo < MAX_AMMO) {
+        this.triggerReload();
+      }
+    });
+  }
+
+  triggerReload() {
+    if (this.model.reloading) return;
+    this.model.reloading = true;
+    this.view.updateAmmoHUD(this.model.ammo, true);
+    clearTimeout(this.reloadHandle);
+    this.reloadHandle = setTimeout(() => {
+      this.model.ammo = MAX_AMMO;
+      this.model.reloading = false;
+      this.view.updateAmmoHUD(this.model.ammo, false);
+    }, RELOAD_MS);
+  }
+
+  startTimer() {
+    clearInterval(this.timerHandle);
+    this.timerHandle = setInterval(() => {
+      if (this.model.state !== 'playing') return;
+      this.model.timeLeft--;
+      this.view.updateTimeHUD(this.model.timeLeft);
+      if (this.model.timeLeft <= 0) this.endGame();
+    }, 1000);
+  }
+
+  startGame() {
+    this.model.score = 0;
+    this.model.wave = 1;
+    this.model.timeLeft = 60;
+    this.model.ammo = MAX_AMMO;
+    this.model.reloading = false;
+    this.model.particles = [];
+    this.model.floats = [];
+    this.model.bulletHoles = [];
+    this.model.muzzle = null;
+    this.model.frame = 0;
+
+    clearInterval(this.timerHandle);
+    clearTimeout(this.reloadHandle);
+    cancelAnimationFrame(this.rafId);
+
+    this.view.updateScoreHUD(this.model.score);
+    this.view.updateWaveHUD(this.model.wave);
+    this.view.updateAmmoHUD(this.model.ammo, false);
+    this.view.updateTimeHUD(this.model.timeLeft);
+
+    this.model.spawnWave(this.view.canvas.width);
+    this.model.state = 'playing';
+    this.view.hideOverlay();
+    this.startTimer();
+    
+    const loop = () => {
+      if (this.model.state !== 'playing') return;
+      let res = this.model.update();
+      if (res === 'nextWave') this.nextWave();
+      this.view.drawScene(this.model);
+      this.rafId = requestAnimationFrame(loop);
+    };
+    this.rafId = requestAnimationFrame(loop);
+  }
+
+  nextWave() {
+    this.model.wave++;
+    this.model.timeLeft = Math.min(this.model.timeLeft + 12, 90);
+    this.view.updateWaveHUD(this.model.wave);
+    this.model.spawnWave(this.view.canvas.width);
+  }
+
+  endGame() {
+    this.model.state = 'gameover';
+    clearInterval(this.timerHandle);
+    clearTimeout(this.reloadHandle);
+    this.view.showGameOver(this.model.score, this.model.wave, () => this.startGame());
+  }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+async function goBack() {
+  try {
+    var api = window.spaceAPI;
+    if (api && api.tabs) {
+      var tabs = await api.tabs.list();
+      var act  = tabs.find(function(t) { return t.isActive; });
+      if (act) { api.tabs.navigate(act.id, 'space://games'); return; }
+    }
+  } catch (_) {}
+  history.back();
+}
+
+// ── Initialization ────────────────────────────────────────────────────────────
+const appModel = new CowboyModel();
+const appView = new CowboyView(canvas, ctx, overlay);
+const appController = new CowboyController(appModel, appView);
+
+// Expose startGame to global scope for button onclick attribute
+window.startGame = () => appController.startGame();
+
+</script>
+</body>
+</html>

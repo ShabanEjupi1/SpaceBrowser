@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\ggml-cpu.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\ggml-cpu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\repack.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\hbm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\quants.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\traits.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\amx\amx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\amx\mmq.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\binary-ops.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\unary-ops.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\vec.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\ops.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\llamafile\sgemm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\arch\x86\quants.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\arch\x86\repack.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\repack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\hbm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\quants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\traits.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\amx\amx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\amx\mmq.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\ggml-cpu-impl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\binary-ops.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\unary-ops.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\simd-mappings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\vec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\ops.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\ggml-cpu\llamafile\sgemm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\shaban.ejupi\Desktop\Projektet\Space\native\include\llama.cpp\ggml\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{7F56A913-9045-3CAC-A6E4-E6E1E092148C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{55CBEB48-D22F-333D-A6F9-14FD986E466E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

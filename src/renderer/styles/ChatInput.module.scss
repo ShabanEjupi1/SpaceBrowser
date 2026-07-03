@@ -1,0 +1,103 @@
+/* Chat Input – Spaceship palette (amber / teal) */
+
+.inputForm {
+  flex-shrink: 0;
+  padding: var(--space-3);
+  border-top: 1px solid var(--ship-border);
+  background: var(--ship-bg-secondary);
+}
+
+.inputWrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  background: var(--ship-bg-tertiary);
+  border: 1px solid var(--ship-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+
+  &:focus-within {
+    border-color: var(--ship-accent);
+    box-shadow: 0 0 0 3px var(--ship-accent-dim);
+  }
+
+  &.generating {
+    border-color: rgba(217, 119, 6, 0.40);
+    box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.14);
+  }
+}
+
+.textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ship-text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  min-height: 22px;
+  max-height: 180px;
+  overflow-y: auto;
+
+  &::placeholder {
+    color: var(--ship-text-muted);
+  }
+
+  &:disabled { opacity: 0.5; }
+}
+
+.sendBtn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ship-accent);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #0b0d0f;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast),
+              box-shadow var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--ship-accent-bright);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.28);
+    transform: scale(1.05);
+  }
+
+  &:disabled {
+    background: var(--ship-bg-active);
+    color: var(--ship-text-muted);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Stop / abort button uses teal so it's distinct from the amber send */
+  &.stopBtn {
+    background: var(--ship-teal);
+    color: #e8ece8;
+    &:hover:not(:disabled) {
+      background: var(--ship-teal-light);
+      color: #0b0d0f;
+      box-shadow: 0 0 10px rgba(13, 148, 136, 0.28);
+    }
+  }
+}
+
+.hint {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-1);
+  font-size: 10px;
+  color: var(--ship-text-muted);
+  padding: 0 var(--space-1);
+}
+
+.charCount {
+  color: var(--ship-text-muted);
+}

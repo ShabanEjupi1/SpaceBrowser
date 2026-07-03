@@ -1,0 +1,466 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Among Us – Space</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:#07060e; display:flex; flex-direction:column; align-items:stretch;
+      height:100vh; font-family:system-ui,sans-serif; color:#e8e8f0;
+      user-select:none; -webkit-app-region:no-drag; overflow:hidden;
+    }
+    .header {
+      width:100%; display:flex; align-items:center; gap:12px;
+      padding:8px 20px; background:#0b0a14;
+      border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0; height:46px;
+    }
+    .back-btn {
+      background:#14121e; border:1px solid rgba(255,255,255,0.07);
+      border-radius:7px; color:#8888aa; font-size:12px; padding:5px 12px;
+      cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.15s;
+    }
+    .back-btn:hover { color:#e8e8f0; border-color:rgba(168,85,247,0.4); }
+    .info-row { margin-left:auto; display:flex; gap:10px; align-items:center; font-size:12px; }
+    .badge { background:#14121e; border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:4px 12px; font-weight:700; }
+    canvas { display:block; flex:1; cursor:none; }
+    #overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.9);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:10;
+    }
+    #overlay h2 { font-size:28px; }
+    #overlay .sub { font-size:14px; color:#8888aa; max-width:380px; text-align:center; }
+    #overlay button {
+      background:#7c3aed; border:none; border-radius:9px;
+      color:#fff; font-size:15px; font-weight:700; padding:12px 36px; cursor:pointer; margin-top:6px;
+    }
+    #overlay button:hover { background:#6d28d9; }
+    #overlay .ctrl { font-size:13px; color:#aaaacc; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="goBack()">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 3,6 8,10"/></svg>
+    Games
+  </button>
+  <span style="font-size:15px;font-weight:700;">🔴 Among Us</span>
+  <div class="info-row">
+    <div class="badge">Tasks <span id="taskEl">0</span>/8</div>
+    <div class="badge">Crew <span id="crewEl">0</span></div>
+    <div class="badge" id="roleEl">Crewmate</div>
+  </div>
+</div>
+<canvas id="c"></canvas>
+<div id="overlay" id="overlay">
+  <h2>🔴 Among Us</h2>
+  <div class="sub">You are the Impostor. Kill crewmates before they complete all 8 tasks!</div>
+  <div class="ctrl">WASD / Arrows to move &nbsp;·&nbsp; Space / E to kill or sabotage</div>
+  <button onclick="startGame()">Start Mission</button>
+</div>
+
+<script>
+'use strict';
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+function resize() {
+  const hdr = document.querySelector('.header');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight - hdr.offsetHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── Room map definitions ───────────────────────────────────────────────────────
+function makeRooms(CW, CH) {
+  const rw = CW, rh = CH;
+  return [
+    { id:'cafeteria', label:'Cafeteria',     x:0.05, y:0.05, w:0.35, h:0.30, color:'#1e1b4b' },
+    { id:'reactor',   label:'Reactor',       x:0.05, y:0.40, w:0.22, h:0.28, color:'#1a1a2e' },
+    { id:'upper_eng', label:'Upper Engine',  x:0.05, y:0.72, w:0.20, h:0.23, color:'#1e1e2a' },
+    { id:'security',  label:'Security',      x:0.30, y:0.40, w:0.20, h:0.22, color:'#14233a' },
+    { id:'medbay',    label:'Medbay',        x:0.30, y:0.65, w:0.20, h:0.30, color:'#0e2a14' },
+    { id:'storage',   label:'Storage',       x:0.54, y:0.55, w:0.22, h:0.40, color:'#1a1208' },
+    { id:'admin',     label:'Admin',         x:0.55, y:0.05, w:0.22, h:0.25, color:'#1e1212' },
+    { id:'o2',        label:'O2',            x:0.55, y:0.33, w:0.16, h:0.20, color:'#0e1e10' },
+    { id:'weapons',   label:'Weapons',       x:0.43, y:0.05, w:0.10, h:0.22, color:'#1a1224' },
+    { id:'nav',       label:'Navigation',    x:0.80, y:0.05, w:0.16, h:0.38, color:'#121828' },
+    { id:'shields',   label:'Shields',       x:0.80, y:0.48, w:0.16, h:0.22, color:'#0e1228' },
+    { id:'comms',     label:'Communications',x:0.80, y:0.73, w:0.16, h:0.22, color:'#181218' },
+    { id:'elec',      label:'Electrical',    x:0.54, y:0.73, w:0.24, h:0.22, color:'#1a1208' },
+  ].map(r => ({
+    ...r,
+    px: Math.round(r.x * rw), py: Math.round(r.y * rh),
+    pw: Math.round(r.w * rw), ph: Math.round(r.h * rh),
+  }));
+}
+
+// ── Corridors (hallway connections) ──────────────────────────────────────────
+function makeCorridors(rooms) {
+  const g = id => rooms.find(r => r.id === id);
+  const corridor = (a, b) => {
+    const ra = g(a), rb = g(b);
+    const ax = ra.px + ra.pw/2, ay = ra.py + ra.ph/2;
+    const bx = rb.px + rb.pw/2, by = rb.py + rb.ph/2;
+    return { ax, ay, bx, by };
+  };
+  return [
+    corridor('cafeteria','weapons'), corridor('cafeteria','admin'),
+    corridor('cafeteria','reactor'), corridor('cafeteria','security'),
+    corridor('reactor','upper_eng'), corridor('reactor','security'),
+    corridor('security','medbay'), corridor('security','o2'),
+    corridor('admin','o2'), corridor('admin','nav'),
+    corridor('o2','storage'), corridor('storage','medbay'),
+    corridor('storage','elec'), corridor('storage','shields'),
+    corridor('nav','shields'), corridor('shields','comms'),
+    corridor('comms','elec'), corridor('weapons','nav'),
+  ];
+}
+
+const PLAYER_R  = 14;
+const CREW_R    = 11;
+const KILL_R    = 44;
+const TASK_R    = 36;
+const CREW_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899','#14b8a6'];
+const TOTAL_TASKS = 8;
+
+let player, crewmates, tasks, bodies, killFeed, rooms, corridors;
+let gameActive = false;
+let keys = {};
+let frame = 0, killCooldown = 0;
+
+window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+window.addEventListener('keyup',   e => { keys[e.code] = false; });
+
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  frame = 0; killCooldown = 0;
+  const CW = canvas.width, CH = canvas.height;
+  rooms = makeRooms(CW, CH);
+  corridors = makeCorridors(rooms);
+
+  const spawnRoom = rooms.find(r => r.id === 'cafeteria');
+  player = {
+    x: spawnRoom.px + spawnRoom.pw / 2,
+    y: spawnRoom.py + spawnRoom.ph / 2,
+    vx: 0, vy: 0, color: '#ff0000', alive: true, animT: 0,
+  };
+
+  crewmates = CREW_COLORS.slice(1).map((col, i) => {
+    const room = rooms[Math.floor(Math.random() * rooms.length)];
+    return {
+      x: room.px + room.pw * 0.2 + Math.random() * room.pw * 0.6,
+      y: room.py + room.ph * 0.2 + Math.random() * room.ph * 0.6,
+      color: col, alive: true, taskProgress: 0,
+      targetTask: null, wanderT: 0, animT: Math.random() * 10,
+    };
+  });
+
+  tasks = Array.from({ length: TOTAL_TASKS }, (_, i) => {
+    const room = rooms[i % rooms.length];
+    return {
+      x: room.px + room.pw * 0.3 + Math.random() * room.pw * 0.4,
+      y: room.py + room.ph * 0.3 + Math.random() * room.ph * 0.4,
+      done: false, pulse: 0,
+    };
+  });
+  bodies = []; killFeed = [];
+  updateHUD();
+  loop();
+}
+
+function updateHUD() {
+  const doneTasks = tasks.filter(t => t.done).length;
+  const aliveCrew = crewmates.filter(c => c.alive).length;
+  document.getElementById('taskEl').textContent = doneTasks;
+  document.getElementById('crewEl').textContent  = aliveCrew;
+}
+
+let lastTS = 0;
+function loop(ts = 0) {
+  if (!gameActive) return;
+  const dt = Math.min((ts - lastTS) / 16.67, 3);
+  lastTS = ts;
+  frame++;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  const CW = canvas.width, CH = canvas.height;
+  const spd = 3.6 * dt;
+
+  if (killCooldown > 0) killCooldown -= dt;
+
+  // ── Player movement ────────────────────────────────────────────────────────
+  let dx = 0, dy = 0;
+  if (keys['KeyW'] || keys['ArrowUp'])    dy -= 1;
+  if (keys['KeyS'] || keys['ArrowDown'])  dy += 1;
+  if (keys['KeyA'] || keys['ArrowLeft'])  dx -= 1;
+  if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+  if (dx || dy) {
+    const m = Math.hypot(dx, dy);
+    player.x += (dx/m)*spd; player.y += (dy/m)*spd;
+    player.animT += dt;
+  }
+  player.x = Math.max(PLAYER_R, Math.min(CW - PLAYER_R, player.x));
+  player.y = Math.max(PLAYER_R, Math.min(CH - PLAYER_R, player.y));
+
+  // ── Kill action ────────────────────────────────────────────────────────────
+  if ((keys['Space'] || keys['KeyE']) && killCooldown <= 0) {
+    keys['Space'] = false; keys['KeyE'] = false;
+    const target = crewmates.filter(c => c.alive)
+      .sort((a, b) => Math.hypot(a.x-player.x,a.y-player.y) - Math.hypot(b.x-player.x,b.y-player.y))[0];
+    if (target && Math.hypot(target.x-player.x, target.y-player.y) < KILL_R) {
+      target.alive = false;
+      bodies.push({ x: target.x, y: target.y, color: target.color });
+      killFeed.push({ text: `${target.color} was killed!`, life: 90 });
+      killCooldown = 150;
+    }
+  }
+
+  // ── Crewmates AI ──────────────────────────────────────────────────────────
+  const pendingTasks = tasks.filter(t => !t.done);
+  crewmates.forEach(c => {
+    if (!c.alive) return;
+    c.animT += dt;
+    c.wanderT -= dt;
+
+    // Assign task
+    if (!c.targetTask || c.targetTask.done) {
+      c.targetTask = pendingTasks[Math.floor(Math.random() * pendingTasks.length)] || null;
+    }
+    if (c.targetTask) {
+      const tx = c.targetTask.x, ty = c.targetTask.y;
+      const dd = Math.hypot(tx - c.x, ty - c.y);
+      if (dd < TASK_R * 0.5) {
+        c.taskProgress += 0.5 * dt;
+        if (c.taskProgress >= 80) { c.targetTask.done = true; c.taskProgress = 0; c.targetTask = null; }
+      } else {
+        const tdx = tx - c.x, tdy = ty - c.y;
+        c.x += (tdx / dd) * 1.1 * dt;
+        c.y += (tdy / dd) * 1.1 * dt;
+      }
+    } else if (c.wanderT <= 0) {
+      const room = rooms[Math.floor(Math.random() * rooms.length)];
+      c.wanderX = room.px + room.pw * 0.2 + Math.random() * room.pw * 0.6;
+      c.wanderY = room.py + room.ph * 0.2 + Math.random() * room.ph * 0.6;
+      c.wanderT = 80;
+    } else if (c.wanderX) {
+      const wd = Math.hypot(c.wanderX - c.x, c.wanderY - c.y);
+      if (wd > 4) { c.x += (c.wanderX-c.x)/wd*1.1*dt; c.y += (c.wanderY-c.y)/wd*1.1*dt; }
+    }
+    c.x = Math.max(CREW_R, Math.min(CW-CREW_R, c.x));
+    c.y = Math.max(CREW_R, Math.min(CH-CREW_R, c.y));
+  });
+
+  // Task pulses
+  tasks.forEach(t => { if (!t.done) t.pulse = (t.pulse + dt * 0.08) % (Math.PI * 2); });
+
+  // Kill feed expiry
+  killFeed.forEach(k => k.life -= dt);
+  killFeed = killFeed.filter(k => k.life > 0);
+
+  updateHUD();
+
+  // ── Win/lose ───────────────────────────────────────────────────────────────
+  const doneTasks = tasks.filter(t => t.done).length;
+  const aliveCrew = crewmates.filter(c => c.alive).length;
+  if (doneTasks >= TOTAL_TASKS) endGame(false);
+  if (aliveCrew <= 1)           endGame(true);
+}
+
+function endGame(impostorWin) {
+  gameActive = false;
+  setTimeout(() => {
+    const ov = document.getElementById('overlay');
+    ov.querySelector('h2').textContent = impostorWin ? '😈 Impostor Wins!' : '✅ Crewmates Win!';
+    ov.querySelector('.sub').textContent = impostorWin
+      ? 'You eliminated enough crewmates before they finished tasks.'
+      : 'The crew completed all tasks. You lose!';
+    ov.style.display = 'flex';
+  }, 600);
+}
+
+// ── Draw Crewmate Shape ───────────────────────────────────────────────────────
+function drawCrewmate(cx, cy, r, color, animT, alpha = 1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // Body
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  // Visor
+  ctx.fillStyle = '#93c5fd';
+  ctx.beginPath();
+  ctx.ellipse(cx + r * 0.1, cy - r * 0.15, r * 0.55, r * 0.35, -0.2, 0, Math.PI * 2); ctx.fill();
+  // Backpack bump
+  ctx.fillStyle = darken(color, 30);
+  ctx.beginPath();
+  ctx.arc(cx + r * 0.7, cy + r * 0.1, r * 0.32, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function darken(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${Math.max(0,(n>>16)-amt)},${Math.max(0,((n>>8)&0xff)-amt)},${Math.max(0,(n&0xff)-amt)})`;
+}
+
+function draw() {
+  const CW = canvas.width, CH = canvas.height;
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Space background
+  ctx.fillStyle = '#07060e';
+  ctx.fillRect(0, 0, CW, CH);
+  // Stars
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  for (let i = 0; i < 80; i++) {
+    const sx = (i * 73 + 31) % CW, sy = (i * 97 + 17) % CH;
+    ctx.fillRect(sx, sy, 1, 1);
+  }
+
+  // Rooms
+  rooms.forEach(r => {
+    ctx.fillStyle = r.color;
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(r.px, r.py, r.pw, r.ph, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = `bold ${Math.max(9, r.pw / 10)}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(r.label, r.px + r.pw/2, r.py + 6);
+  });
+
+  // Corridors
+  corridors.forEach(cor => {
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 16;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cor.ax, cor.ay); ctx.lineTo(cor.bx, cor.by); ctx.stroke();
+  });
+
+  // Tasks
+  tasks.forEach(t => {
+    if (t.done) {
+      ctx.fillStyle = 'rgba(34,197,94,0.4)';
+      ctx.beginPath(); ctx.arc(t.x, t.y, TASK_R * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#22c55e';
+      ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('✓', t.x, t.y);
+    } else {
+      const pulse = 0.6 + Math.sin(t.pulse * 4) * 0.35;
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 12; ctx.shadowColor = '#fbbf24';
+      ctx.beginPath(); ctx.arc(t.x, t.y, TASK_R * 0.45, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = pulse * 0.7;
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('📋', t.x, t.y);
+      ctx.restore();
+    }
+  });
+
+  // Bodies
+  bodies.forEach(b => {
+    ctx.fillStyle = b.color;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y + 6, CREW_R * 0.9, CREW_R * 0.55, Math.PI * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff';
+    ctx.font = '13px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('💀', b.x, b.y);
+  });
+
+  // Crewmates
+  crewmates.forEach(c => {
+    if (!c.alive) return;
+    const near = Math.hypot(c.x - player.x, c.y - player.y) < KILL_R && killCooldown <= 0;
+    if (near) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(239,68,68,0.6)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.arc(c.x, c.y, KILL_R * 0.7, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    // Task progress arc
+    if (c.targetTask && !c.targetTask.done && c.taskProgress > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, CREW_R + 5, -Math.PI/2, -Math.PI/2 + (c.taskProgress/80)*Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    drawCrewmate(c.x, c.y, CREW_R, c.color, c.animT);
+  });
+
+  // Player (impostor)
+  if (player.alive) {
+    // Kill range indicator
+    if (killCooldown <= 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(239,68,68,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(player.x, player.y, KILL_R, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+    drawCrewmate(player.x, player.y, PLAYER_R, player.color, player.animT);
+    // Crown
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = '14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('👑', player.x, player.y - PLAYER_R - 2);
+  }
+
+  // Kill cooldown bar
+  if (killCooldown > 0) {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(10, 8, 120, 8);
+    const ratio = 1 - killCooldown / 150;
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(10, 8, 120 * ratio, 8);
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('Kill Cooldown', 10, 18);
+  } else {
+    ctx.fillStyle = 'rgba(34,197,94,0.8)';
+    ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('⚡ KILL READY (Space/E near crew)', 10, 10);
+  }
+
+  // Kill feed
+  killFeed.forEach((k, i) => {
+    ctx.globalAlpha = Math.min(1, k.life / 20);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+    ctx.fillText(k.text, canvas.width - 12, 10 + i * 18);
+    ctx.globalAlpha = 1;
+  });
+}
+
+async function goBack() {
+  try {
+    const api = window.spaceAPI;
+    if (api?.tabs) {
+      const tabs = await api.tabs.list();
+      const active = tabs.find(t => t.isActive);
+      if (active) { api.tabs.navigate(active.id, 'space://games'); return; }
+    }
+  } catch (_) {}
+  history.back();
+}
+</script>
+</body>
+</html>
