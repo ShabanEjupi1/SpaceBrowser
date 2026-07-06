@@ -27,7 +27,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Clone llama.cpp (native inference engine)
         run: git clone --depth=1 https://github.com/ggerganov/llama.cpp.git native/include/llama.cpp

@@ -7,6 +7,7 @@ node_modules/
 dist/
 release/
 native/build/
+native/build_cmake/
 
 # Vendored third-party (auto-fetched by build script)
 native/include/llama.cpp/
