@@ -62,10 +62,14 @@ const nodeAddonInclude = execSync('node -p "require(\'node-addon-api\').include"
 // We MUST build space_inference.node against Electron's Node.js headers,
 // NOT the system Node.js headers, otherwise Node.js ABI mismatch causes crash.
 const ELECTRON_VERSION = '28.3.3';
-const electronHeadersRoot = path.join(
-  process.env.LOCALAPPDATA || os.homedir(),
-  'node-gyp', 'Cache', ELECTRON_VERSION
-);
+// Pin the node-gyp devdir explicitly: the default cache location differs per
+// OS (~/.cache/node-gyp on Linux, ~/Library/Caches/node-gyp on macOS,
+// %LOCALAPPDATA%\node-gyp\Cache on Windows), so download and lookup must
+// agree on one path.
+const ELECTRON_DEVDIR = process.env.LOCALAPPDATA
+  ? path.join(process.env.LOCALAPPDATA, 'node-gyp', 'Cache')
+  : path.join(os.homedir(), '.cache', 'node-gyp');
+const electronHeadersRoot = path.join(ELECTRON_DEVDIR, ELECTRON_VERSION);
 let nodeHeaders = path.join(electronHeadersRoot, 'include', 'node');
 let nodeLib     = path.join(electronHeadersRoot, 'x64', 'node.lib');
 
@@ -73,7 +77,7 @@ let nodeLib     = path.join(electronHeadersRoot, 'x64', 'node.lib');
 if (!fs.existsSync(path.join(nodeHeaders, 'node_api.h'))) {
   console.log(`📥 Downloading Electron ${ELECTRON_VERSION} Node.js headers…`);
   execSync(
-    `npx node-gyp install --target=${ELECTRON_VERSION} --arch=x64 --dist-url=https://electronjs.org/headers`,
+    `npx node-gyp install --target=${ELECTRON_VERSION} --arch=x64 --dist-url=https://electronjs.org/headers --devdir="${ELECTRON_DEVDIR}"`,
     { cwd: ROOT, stdio: 'inherit' }
   );
 }
