@@ -145,8 +145,8 @@ elseif(APPLE)
   )
   target_link_libraries(space_inference PRIVATE "-framework Accelerate")
 else()
+  # Linux: a shared object already permits undefined symbols by default;
+  # napi_* symbols are resolved from the Electron host process at load time.
+  # (The macOS-only "-undefined dynamic_lookup" flag is not valid for GNU ld.)
   target_compile_options(space_inference PRIVATE -O3 -march=native)
-  set_target_properties(space_inference PROPERTIES
-    LINK_FLAGS "-undefined dynamic_lookup"
-  )
 endif()
