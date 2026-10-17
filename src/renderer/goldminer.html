@@ -112,8 +112,8 @@
   <div class="goal-info" id="goalDisplay">Level 1 — Collect $800 to advance! (20 levels total)</div>
   <div class="btn-row">
     <button class="ov-btn" onclick="startGame(1)">⛏️ 1 Player</button>
-    <button class="ov-btn secondary" onclick="startGame(2)">👥 2 Players</button>
-    <button class="ov-btn green" onclick="startGame('ai')">🤖 vs AI</button>
+    <button class="ov-btn secondary" onclick="startGame(2)">🔁 2 Players</button>
+    <button class="ov-btn green" onclick="startGame('ai')">⚙️ vs AI</button>
   </div>
 </div>
 
@@ -359,7 +359,7 @@ function gameOver(won) {
 function updateHUD() {
   const totalGoal=Object.values(scores).reduce((a,b)=>a+b,0);
   document.getElementById('p1ScoreBadge').textContent='P1 💰$'+(scores[1]||0);
-  document.getElementById('p2ScoreBadge').textContent=(aiActive?'🤖 AI':'P2')+' 💰$'+(scores[2]||0);
+  document.getElementById('p2ScoreBadge').textContent=(aiActive?'⚙️ AI':'P2')+' 💰$'+(scores[2]||0);
   document.getElementById('goalBadge').textContent='Goal: $'+GOALS[level];
   document.getElementById('levelBadge').textContent='Lv '+level+'/'+MAX_LEVEL;
   document.getElementById('dynBadge').textContent='💣 ×'+(dynamites[currentPlayer]||0);
@@ -649,20 +649,13 @@ function drawMinerPlatform(px,py,p){
   ctx.fillStyle=p===2?'#1e3a5f':'#451a03';
   ctx.beginPath();ctx.roundRect(-platW/2,0,platW,platH,4);ctx.fill();
   ctx.strokeStyle=p===2?'#2563eb':'#92400e';ctx.lineWidth=1.5;ctx.stroke();
-  // Body (no face — just a helmet+body silhouette)
+  // Winch housing — a machine, not a figure (no living-being silhouette)
   ctx.fillStyle=p===2?'#1e40af':'#1c1917';
-  ctx.beginPath();ctx.roundRect(-16,-40,32,44,4);ctx.fill();
-  // Helmet
+  ctx.beginPath();ctx.roundRect(-22,-34,44,34,4);ctx.fill();
+  // Drum
   ctx.fillStyle=p===2?'#3b82f6':'#b45309';
-  ctx.beginPath();ctx.arc(0,-44,17,Math.PI,0);ctx.fill();
-  ctx.fillRect(-17,-44,34,8);
-  // Visor (instead of face)
-  ctx.fillStyle='rgba(0,0,0,0.6)';
-  ctx.beginPath();ctx.roundRect(-11,-46,22,12,3);ctx.fill();
+  ctx.beginPath();ctx.arc(0,-17,11,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle=p===2?'rgba(147,197,253,0.5)':'rgba(254,243,199,0.4)';ctx.lineWidth=1;ctx.stroke();
-  // Helmet light
-  ctx.fillStyle=p===2?'#93c5fd':'#fef3c7'; ctx.shadowColor=p===2?'#60a5fa':'#fef3c7'; ctx.shadowBlur=10;
-  ctx.beginPath();ctx.arc(0,-52,4,0,Math.PI*2);ctx.fill(); ctx.shadowBlur=0;
   // Player label
   ctx.fillStyle=p===2?'#93c5fd':'#fbbf24'; ctx.font='bold 8px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(p===2&&aiActive?'AI':'P'+p,0,-16);

@@ -209,18 +209,6 @@
       transition: opacity 0.2s;
     }
 
-    .game-card.chess::before     { background: radial-gradient(ellipse at top left, rgba(181,136,99,0.14) 0%, transparent 70%); }
-    .game-card.chess3d::before   { background: radial-gradient(ellipse at top left, rgba(99,102,241,0.14) 0%, transparent 70%); }
-    .game-card.flappy::before    { background: radial-gradient(ellipse at top left, rgba(34,197,94,0.14) 0%, transparent 70%); }
-    .game-card.slope::before     { background: radial-gradient(ellipse at top left, rgba(239,68,68,0.14) 0%, transparent 70%); }
-    .game-card.goldminer::before { background: radial-gradient(ellipse at top left, rgba(234,179,8,0.14) 0%, transparent 70%); }
-    .game-card.eightball::before { background: radial-gradient(ellipse at top left, rgba(22,163,74,0.14) 0%, transparent 70%); }
-    .game-card.boxhead::before   { background: radial-gradient(ellipse at top left, rgba(220,38,38,0.14) 0%, transparent 70%); }
-    .game-card.subway::before    { background: radial-gradient(ellipse at top left, rgba(249,115,22,0.14) 0%, transparent 70%); }
-    .game-card.amongus::before   { background: radial-gradient(ellipse at top left, rgba(204,0,0,0.14) 0%, transparent 70%); }
-    .game-card.football::before  { background: radial-gradient(ellipse at top left, rgba(20,83,45,0.14) 0%, transparent 70%); }
-    .game-card.standoff::before  { background: radial-gradient(ellipse at top left, rgba(127,29,29,0.14) 0%, transparent 70%); }
-    .game-card.blackops::before  { background: radial-gradient(ellipse at top left, rgba(101,163,13,0.14) 0%, transparent 70%); }
 
     .game-card:hover {
       border-color: var(--border-hover);
@@ -395,7 +383,7 @@
   <div class="section-label">Quick Access</div>
   <div class="quick-links">
     <div class="quick-link" onclick="openUrl('https://github.com')" title="GitHub">
-      <span class="quick-link-icon">🐙</span>GitHub
+      <span class="quick-link-icon">📦</span>GitHub
     </div>
     <div class="quick-link" onclick="openUrl('https://www.youtube.com')" title="YouTube">
       <span class="quick-link-icon">▶️</span>YouTube
@@ -407,13 +395,10 @@
       <span class="quick-link-icon">🗞️</span>HN
     </div>
     <div class="quick-link" onclick="openUrl('https://huggingface.co')" title="HuggingFace">
-      <span class="quick-link-icon">🤗</span>HuggingFace
+      <span class="quick-link-icon">🔗</span>HuggingFace
     </div>
     <div class="quick-link" onclick="openUrl('https://www.reddit.com')" title="Reddit">
       <span class="quick-link-icon">💬</span>Reddit
-    </div>
-    <div class="quick-link" onclick="openUrl('space://chess')" title="Play Chess – integrated, offline">
-      <span class="quick-link-icon">♟️</span>Chess
     </div>
     <div class="quick-link" onclick="openUrl('space://games')" title="All Games">
       <span class="quick-link-icon">🎮</span>Games
@@ -436,51 +421,6 @@
     </span>
   </div>
   <div class="games-grid">
-
-    <!-- Chess -->
-    <div class="game-card chess" onclick="openUrl('space://chess')" title="Play Chess offline" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon chess-icon">♟</div>
-        <div>
-          <div class="game-card-title">Chess</div>
-          <div class="game-card-subtitle">Integrated engine · AI · LAN</div>
-        </div>
-      </div>
-      <div class="chess-preview" id="chessPreview" aria-hidden="true"></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <span class="game-badge badge-3d">3D Board</span>
-        <span class="game-badge badge-online">Offline</span>
-      </div>
-    </div>
-
-    <!-- 3D Tri-Level Chess -->
-    <div class="game-card chess3d" onclick="openUrl('space://chess3d')" title="3D Tri-Level Chess" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#1e1b4b,#4338ca);box-shadow:0 4px 14px rgba(99,102,241,0.3);">♛</div>
-        <div>
-          <div class="game-card-title">3D Chess</div>
-          <div class="game-card-subtitle">Tri-level Star Trek style</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge" style="background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);">3 Levels</span>
-        <span class="game-badge badge-online">Offline · Undo</span>
-      </div>
-    </div>
-
-    <!-- Flappy Bird -->
-    <div class="game-card flappy" onclick="openUrl('space://flappy')" title="Flappy Bird" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#14532d,#15803d);box-shadow:0 4px 14px rgba(34,197,94,0.3);">🐦</div>
-        <div>
-          <div class="game-card-title">Flappy Bird</div>
-          <div class="game-card-subtitle">Dodge the pipes</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge badge-online">Offline · Arcade</span>
-      </div>
-    </div>
 
     <!-- Slope -->
     <div class="game-card slope" onclick="openUrl('space://slope')" title="Slope 3D Runner" style="cursor:pointer;">
@@ -521,90 +461,6 @@
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
         <span class="game-badge badge-online">Offline · 2P</span>
-      </div>
-    </div>
-
-    <!-- Box Head -->
-    <div class="game-card boxhead" onclick="openUrl('space://boxhead')" title="Box Head Zombies" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#450a0a,#dc2626);box-shadow:0 4px 14px rgba(220,38,38,0.3);">🧟</div>
-        <div>
-          <div class="game-card-title">Box Head</div>
-          <div class="game-card-subtitle">Zombie waves · 2-player co-op</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge badge-online">Offline · 2P · Action</span>
-      </div>
-    </div>
-
-    <!-- Subway Dash -->
-    <div class="game-card subway" onclick="openUrl('space://subway')" title="Subway Dash" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#431407,#ea580c);box-shadow:0 4px 14px rgba(249,115,22,0.3);">🏃</div>
-        <div>
-          <div class="game-card-title">Subway Dash</div>
-          <div class="game-card-subtitle">Endless runner · dodge trains</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge badge-online">Offline · Arcade</span>
-      </div>
-    </div>
-
-    <!-- Among Us -->
-    <div class="game-card amongus" onclick="openUrl('space://amongus')" title="Among Us" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#450a0a,#991b1b);box-shadow:0 4px 14px rgba(204,0,0,0.3);">🔴</div>
-        <div>
-          <div class="game-card-title">Among Us</div>
-          <div class="game-card-subtitle">Impostor mode · eliminate crew</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge badge-online">Offline · Strategy</span>
-      </div>
-    </div>
-
-    <!-- Football -->
-    <div class="game-card football" onclick="openUrl('space://football')" title="Street Football" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#052e16,#166534);box-shadow:0 4px 14px rgba(22,163,74,0.25);">⚽</div>
-        <div>
-          <div class="game-card-title">Street Football</div>
-          <div class="game-card-subtitle">2-player kick-off · local</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge badge-online">Offline · 2P · Sports</span>
-      </div>
-    </div>
-
-    <!-- Standoff -->
-    <div class="game-card standoff" onclick="openUrl('space://standoff')" title="Standoff Tactics" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#450a0a,#7f1d1d);box-shadow:0 4px 14px rgba(127,29,29,0.35);">🔫</div>
-        <div>
-          <div class="game-card-title">Standoff</div>
-          <div class="game-card-subtitle">Tactical shooter · 2-player</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge badge-online">Offline · 2P · Action</span>
-      </div>
-    </div>
-
-    <!-- Black Ops / Commando Ops -->
-    <div class="game-card blackops" onclick="openUrl('space://blackops')" title="Commando Ops" style="cursor:pointer;">
-      <div class="game-card-header">
-        <div class="game-icon" style="background:linear-gradient(135deg,#1a2e05,#4d7c0f);box-shadow:0 4px 14px rgba(101,163,13,0.3);">🪖</div>
-        <div>
-          <div class="game-card-title">Commando Ops</div>
-          <div class="game-card-subtitle">Solo military wave shooter</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <span class="game-badge badge-online">Offline · Action</span>
       </div>
     </div>
 
@@ -702,43 +558,6 @@
       window.location.href = url;
     }
 
-    // ── Mini 3D chess board ────────────────────────────────────────────────────
-    // FEN: standard starting position (rows 8→1)
-    const FEN_PIECES = {
-      'r':'♜','n':'♞','b':'♝','q':'♛','k':'♚','p':'♟',
-      'R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔','P':'♙',
-    };
-    const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
-    const rows = START_FEN.split('/');
-    const board = document.getElementById('chessPreview');
-
-    rows.forEach((row, ri) => {
-      let ci = 0;
-      for (const ch of row) {
-        if (ch >= '1' && ch <= '8') {
-          for (let i = 0; i < parseInt(ch); i++) {
-            const cell = document.createElement('div');
-            cell.className = 'chess-cell ' + ((ri + ci) % 2 === 0 ? 'light' : 'dark');
-            board.appendChild(cell);
-            ci++;
-          }
-        } else {
-          const cell = document.createElement('div');
-          cell.className = 'chess-cell ' + ((ri + ci) % 2 === 0 ? 'light' : 'dark');
-          const piece = FEN_PIECES[ch];
-          if (piece) {
-            cell.textContent = piece;
-            cell.style.color = ch === ch.toUpperCase() ? '#fff' : '#1a0a00';
-            cell.style.textShadow = ch === ch.toUpperCase()
-              ? '0 1px 2px rgba(0,0,0,0.8)'
-              : '0 1px 2px rgba(255,255,255,0.3)';
-            cell.style.fontSize = '10px';
-          }
-          board.appendChild(cell);
-          ci++;
-        }
-      }
-    });
   </script>
 </body>
 </html>

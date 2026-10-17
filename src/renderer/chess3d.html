@@ -899,7 +899,7 @@ function minimax(bs, castl, ep, depth, alpha, beta, maximizing) {
 function scheduleAI() {
   if (!aiEnabled || sideToMove !== B || gameOver || aiThinking) return;
   aiThinking = true;
-  updateStatus('🤖 AI is thinking…');
+  updateStatus('⚙️ AI is thinking…');
 
   // Use setTimeout to yield to the UI before running the search
   setTimeout(() => {
