@@ -1,14 +1,14 @@
 /**
  * Space Browser – Root App Component
  * Orchestrates the browser shell layout:
- *   TitleBar → TabBar → AddressBar → [ContentArea | AISidebar]
+ *   TitleBar → TabBar → AddressBar → [ContentArea | ModelSidebar]
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TitleBar }    from './components/TitleBar';
 import { TabBar }      from './components/TabBar';
 import { AddressBar }  from './components/AddressBar';
-import { AISidebar }   from './components/AISidebar';
+import { ModelSidebar }   from './components/ModelSidebar';
 import styles          from './styles/App.module.scss';
 
 // Maximum number of recently-closed tabs we remember so Ctrl+Shift+T can restore them.
@@ -148,7 +148,7 @@ const AppInner: React.FC = () => {
 
     // App-level events (IPC → renderer, allowed channels in preload)
     const cleanupSidebarToggle = api.on('sidebar:toggle',   () => setSidebarOpen(prev => !prev));
-    const cleanupOpenAI      = api.on('ai:open-chat',      () => setSidebarOpen(true));
+    const cleanupOpenAI      = api.on('model:open-chat',      () => setSidebarOpen(true));
     const cleanupCloseActive = api.on('tabs:close-active', () => {
       const active = tabsRef.current.find(t => t.isActive);
       if (active) api.tabs.close(active.id);
@@ -386,7 +386,7 @@ const AppInner: React.FC = () => {
         />
       </div>
 
-      {/* Content area + optional AI sidebar */}
+      {/* Content area + optional model sidebar */}
       <div className={`${styles.contentRow} ${sidebarOpen ? styles.sidebarVisible : ''}`}>
         {/* BrowserView content placeholder – the actual web content is rendered
             by Electron's BrowserView layer (native, sits below this renderer window).
@@ -407,10 +407,10 @@ const AppInner: React.FC = () => {
           )}
         </div>
 
-        {/* AI Sidebar panel */}
+        {/* model Sidebar panel */}
         {sidebarOpen && (
           <div className={styles.sidebarWrapper}>
-            <AISidebar
+            <ModelSidebar
               pageUrl={activeTab?.url}
               pageTitle={activeTab?.title}
               onClose={() => setSidebarOpen(false)}

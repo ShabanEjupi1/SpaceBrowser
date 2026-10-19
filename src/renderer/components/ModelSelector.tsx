@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ModelInfo } from './AISidebar';
+import { ModelInfo } from './ModelSidebar';
 import styles from '../styles/ModelSelector.module.scss';
 
 interface OllamaModelInfo {
@@ -44,7 +44,7 @@ export const ModelSelector: React.FC<Props> = ({
   // ── Bootstrap: check if Ollama is installed ──────────────────────────────
 
   useEffect(() => {
-    api?.ai?.ollamaAvailable?.()
+    api?.model?.ollamaAvailable?.()
       .then((available: boolean) => {
         setOllamaAvailable(available);
         if (available) loadOllamaModels();
@@ -56,7 +56,7 @@ export const ModelSelector: React.FC<Props> = ({
     setOllamaLoading(true);
     setOllamaError('');
     try {
-      const list: OllamaModelInfo[] = await api.ai.ollamaModels();
+      const list: OllamaModelInfo[] = await api.model.ollamaModels();
       setOllamaModels(list);
     } catch (err: any) {
       setOllamaError(err?.message ?? 'Failed to load Ollama models');
@@ -68,7 +68,7 @@ export const ModelSelector: React.FC<Props> = ({
   const handleLoadOllamaModel = useCallback(async (id: string) => {
     setLoadingOllamaId(id);
     try {
-      const ok = await api.ai.loadOllamaModel(id);
+      const ok = await api.model.loadOllamaModel(id);
       if (ok) onRefresh();
     } finally {
       setLoadingOllamaId(null);

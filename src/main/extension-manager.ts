@@ -10,7 +10,7 @@ export interface ExtensionManifest {
   version: string;
   description: string;
   author?: string;
-  category?: 'productivity' | 'developer' | 'ai' | 'privacy' | 'theme' | 'other';
+  category?: 'productivity' | 'developer' | 'model' | 'privacy' | 'theme' | 'other';
   icon?: string;
   permissions?: string[];
   contentScript?: string;
@@ -239,9 +239,9 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
     version: '2.0.0',
     description: 'Translate any selected text or the full page instantly.',
     author: 'Space Team',
-    category: 'ai',
+    category: 'model',
     icon: '🌐',
-    permissions: ['tabs', 'ai'],
+    permissions: ['tabs', 'model'],
     contentScript: `(function(){
   if(window.__spaceTranslatorInjected){
     if(window.openPageTranslator) window.openPageTranslator();
@@ -311,9 +311,9 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
     output.innerHTML='<span style="color:#444460;font-size:12px;">Translating to '+lang+'…</span>';
 
     var api=window.spaceAPI;
-    var useAI = false; // api && api.ai && api.ai.chat && api.ai.status && api.ai.status().status === 'loaded';
+    var useModel = false; // api && api.model && api.model.chat && api.model.status && api.model.status().status === 'loaded';
 
-    if (useAI) {
+    if (useModel) {
       var messages=[
         {role:'system',content:'You are a professional translator. Translate the text below to '+lang+'. Output ONLY the translation — no explanations, no quotation marks, no labels.'},
         {role:'user',content:text}
@@ -321,13 +321,13 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
       var reqId='sel-translate-'+Date.now();
       output.textContent='';
 
-      var unsub=api.ai.onToken(function(data){
+      var unsub=api.model.onToken(function(data){
         if(data.requestId!==reqId)return;
         if(data.error){output.innerHTML='<span style="color:#f87171;font-size:12px;">Error: '+data.error+'</span>';if(unsub)unsub();return;}
         if(data.token)output.textContent+=data.token;
         if(data.isFinal){if(unsub)unsub();}
       });
-      api.ai.chat(messages,{maxTokens:1024,temperature:0.2},reqId).catch(function(err){
+      api.model.chat(messages,{maxTokens:1024,temperature:0.2},reqId).catch(function(err){
         if(output)output.innerHTML='<span style="color:#f87171;font-size:12px;">Translation failed.</span>';
       });
     } else {
@@ -408,10 +408,10 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
     goBtn.disabled=true;goBtn.textContent='Translating…';
     
     var api=window.spaceAPI;
-    var useAI = false;
+    var useModel = false;
 
-    if (useAI) {
-      if(!api||!api.ai||!api.ai.chat){
+    if (useModel) {
+      if(!api||!api.model||!api.model.chat){
         output.innerHTML='<span style="color:#f87171;">⚠ Space model engine not available. Load a model in the assistant sidebar first.</span>';
         goBtn.disabled=false;goBtn.textContent='Translate This Page';
         return;
@@ -422,13 +422,13 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
       ];
       var reqId='page-translate-'+Date.now();
       output.textContent='';
-      var unsub=api.ai.onToken(function(data){
+      var unsub=api.model.onToken(function(data){
         if(data.requestId!==reqId)return;
         if(data.error){output.innerHTML+='<span style="color:#f87171;">Error: '+data.error+'</span>';goBtn.disabled=false;goBtn.textContent='Translate This Page';if(unsub)unsub();return;}
         if(data.token)output.textContent+=data.token;
         if(data.isFinal){goBtn.disabled=false;goBtn.textContent='Translate This Page';if(unsub)unsub();}
       });
-      api.ai.chat(messages,{maxTokens:2048,temperature:0.3},reqId).catch(function(err){
+      api.model.chat(messages,{maxTokens:2048,temperature:0.3},reqId).catch(function(err){
         output.innerHTML='<span style="color:#f87171;">Translation failed: '+err.message+'</span>';
         goBtn.disabled=false;goBtn.textContent='Translate This Page';
       });
@@ -477,9 +477,9 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
     version: '1.1.0',
     description: 'Summarise any web page in one click.',
     author: 'Space Team',
-    category: 'ai',
+    category: 'model',
     icon: '✨',
-    permissions: ['tabs', 'ai'],
+    permissions: ['tabs', 'model'],
     contentScript: `(function(){
   if(window.__spaceSummariser){
     if(window.openSummariser) window.openSummariser();
@@ -520,7 +520,7 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
     var text=extractText();
     if(!text||text.length<100){output.innerHTML='<span style="color:#f87171;">Not enough readable content on this page to summarise.</span>';return;}
     var api=window.spaceAPI;
-    if(!api||!api.ai||!api.ai.chat){
+    if(!api||!api.model||!api.model.chat){
       output.innerHTML='<span style="color:#f87171;">⚠ Load a language model in the Space sidebar first.</span>';
       return;
     }
@@ -536,13 +536,13 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
     var reqId='summariser-'+Date.now();
     output.textContent='';
     if(status)status.textContent='Summarising...';
-    var unsub=api.ai.onToken(function(data){
+    var unsub=api.model.onToken(function(data){
       if(data.requestId!==reqId)return;
       if(data.error){output.innerHTML+='<span style="color:#f87171;">Error: '+data.error+'</span>';if(status)status.textContent='';if(unsub)unsub();return;}
       if(data.token)output.textContent+=data.token;
       if(data.isFinal){if(status)status.textContent='Done';setTimeout(function(){if(status)status.textContent='';},2500);if(unsub)unsub();}
     });
-    api.ai.chat(messages,{maxTokens:1024,temperature:0.5},reqId).catch(function(err){
+    api.model.chat(messages,{maxTokens:1024,temperature:0.5},reqId).catch(function(err){
       output.innerHTML='<span style="color:#f87171;">Summary failed: '+err.message+'</span>';
       if(status)status.textContent='';
     });

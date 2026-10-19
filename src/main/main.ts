@@ -3,7 +3,7 @@
  * ----------------------------------------
  * Entry point for the Electron app.
  * Creates the browser window, manages tabs,
- * and registers IPC handlers for AI inference.
+ * and registers IPC handlers for model inference.
  */
 
 import {
@@ -19,7 +19,7 @@ import {
   net,
 } from 'electron';
 import path from 'path';
-import { aiEngine } from '../ai-engine/AIEngine';
+import { modelEngine } from '../model-engine/ModelEngine';
 import { registerIpcHandlers, setTabManagerRef } from './ipc-handlers';
 import { createApplicationMenu } from './menu';
 import { TabManager } from './tab-manager';
@@ -266,16 +266,16 @@ app.whenReady().then(async () => {
     },
   );
 
-  // Initialize AI engine (loads addon, scans models)
+  // Initialize model engine (loads addon, scans models)
   try {
-    await aiEngine.initialize();
-    console.log('[Main] AI Engine initialized');
+    await modelEngine.initialize();
+    console.log('[Main] model Engine initialized');
   } catch (err) {
-    console.error('[Main] AI Engine initialization failed:', err);
+    console.error('[Main] model Engine initialization failed:', err);
   }
 
   // Register IPC handlers for renderer ↔ main communication
-  registerIpcHandlers(aiEngine);
+  registerIpcHandlers(modelEngine);
   registerChessServerIpc();
 
   // Start chess multiplayer server (local WebSocket, LAN/WAN)
@@ -318,16 +318,16 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  aiEngine.abort();
-  aiEngine.unloadModel();
+  modelEngine.abort();
+  modelEngine.unloadModel();
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('before-quit', () => {
-  aiEngine.abort();
-  aiEngine.unloadModel();
+  modelEngine.abort();
+  modelEngine.unloadModel();
 });
 
 // ── Main Window Factory ───────────────────────────────────────────────────────

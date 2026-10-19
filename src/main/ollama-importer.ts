@@ -14,7 +14,7 @@
  *
  * This module reads all manifests, locates the GGUF blobs,
  * and returns ModelInfo-compatible objects that can be fed
- * directly into the AIEngine.
+ * directly into the ModelEngine.
  */
 
 import fs   from 'fs';
@@ -22,7 +22,7 @@ import path from 'path';
 import os   from 'os';
 
 export interface OllamaModelInfo {
-  /** Stable ID that AIEngine will use (e.g. "llama3.2:3b") */
+  /** Stable ID that ModelEngine will use (e.g. "llama3.2:3b") */
   id: string;
   /** Human-readable name */
   name: string;

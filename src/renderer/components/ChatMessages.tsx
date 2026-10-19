@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Message } from './AISidebar';
+import { Message } from './ModelSidebar';
 import styles from '../styles/ChatMessages.module.scss';
 
 interface Props {
@@ -52,7 +52,7 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message: msg }) => {
       aria-label={`${msg.role}: ${displayContent}`}
     >
       <div className={styles.avatar}>
-        {isUser ? <UserAvatar /> : <AIAvatar />}
+        {isUser ? <UserAvatar /> : <ModelAvatar />}
       </div>
       <div className={styles.bubble}>
         {msg.error ? (
@@ -148,12 +148,12 @@ const UserAvatar = () => (
   </svg>
 );
 
-const AIAvatar = () => (
+const ModelAvatar = () => (
   <svg viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden="true">
     <path d="M10 1 L12 7 L18 10 L12 13 L10 19 L8 13 L2 10 L8 7 Z"
-          fill="url(#aiAv)" />
+          fill="url(#modelAv)" />
     <defs>
-      <linearGradient id="aiAv" x1="0%" y1="0%" x2="100%" y2="100%">
+      <linearGradient id="modelAv" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%"   stopColor="#a78bfa" />
         <stop offset="100%" stopColor="#6366f1" />
       </linearGradient>

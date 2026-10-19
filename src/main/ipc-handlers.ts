@@ -1,12 +1,12 @@
 ﻿/**
  * Space Browser â€“ IPC Handlers
  * -----------------------------------------------
- * All main-process IPC handlers for AI engine and browser features.
+ * All main-process IPC handlers for model engine and browser features.
  * Renderer communicates via the preload bridge.
  */
 
 import { ipcMain, dialog, BrowserWindow, net, app, shell } from 'electron';
-import { AIEngine, ChatMessage, GenerationParams } from '../ai-engine/AIEngine';
+import { ModelEngine, ChatMessage, GenerationParams } from '../model-engine/ModelEngine';
 import { extensionManager } from './extension-manager';
 import Store from 'electron-store';
 import path from 'path';
@@ -76,7 +76,7 @@ const prefsStore = new Store<BrowserPrefs>({
   },
 });
 
-export function registerIpcHandlers(engine: AIEngine): void {
+export function registerIpcHandlers(engine: ModelEngine): void {
 
   // â”€â”€ Chess Game History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const chessStore = new Store<{ games: any[] }>({
@@ -94,43 +94,43 @@ export function registerIpcHandlers(engine: AIEngine): void {
 
   // â”€â”€ Model Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  ipcMain.handle('ai:scan-models', async () => {
+  ipcMain.handle('model:scan-models', async () => {
     return engine.scanModels();
   });
 
-  ipcMain.handle('ai:list-models', () => {
+  ipcMain.handle('model:list-models', () => {
     return engine.listModels();
   });
 
-  ipcMain.handle('ai:add-model', async (_event, sourcePath: string, modelId?: string) => {
+  ipcMain.handle('model:add-model', async (_event, sourcePath: string, modelId?: string) => {
     return engine.addModel(sourcePath, modelId);
   });
 
-  ipcMain.handle('ai:remove-model', async (_event, modelId: string) => {
+  ipcMain.handle('model:remove-model', async (_event, modelId: string) => {
     return engine.removeModel(modelId);
   });
 
-  ipcMain.handle('ai:load-model', async (_event, modelId: string, params?: Partial<GenerationParams>) => {
+  ipcMain.handle('model:load-model', async (_event, modelId: string, params?: Partial<GenerationParams>) => {
     return engine.loadModel(modelId, params);
   });
 
-  ipcMain.handle('ai:unload-model', () => {
+  ipcMain.handle('model:unload-model', () => {
     engine.unloadModel();
   });
 
-  ipcMain.handle('ai:is-loaded', () => {
+  ipcMain.handle('model:is-loaded', () => {
     return engine.isLoaded();
   });
 
-  ipcMain.handle('ai:get-active-model-id', () => {
+  ipcMain.handle('model:get-active-model-id', () => {
     return engine.getActiveModelId();
   });
 
-  ipcMain.handle('ai:get-model-metadata', () => {
+  ipcMain.handle('model:get-model-metadata', () => {
     return engine.getModelMetadata();
   });
 
-  ipcMain.handle('ai:count-tokens', (_event, text: string) => {
+  ipcMain.handle('model:count-tokens', (_event, text: string) => {
     return engine.countTokens(text);
   });
 
@@ -138,16 +138,16 @@ export function registerIpcHandlers(engine: AIEngine): void {
 
   /**
    * Chat inference with streaming.
-   * Tokens are sent back via IPC event: 'ai:token' with { token, isFinal, requestId }
+   * Tokens are sent back via IPC event: 'model:token' with { token, isFinal, requestId }
    */
-  ipcMain.handle('ai:chat', async (event, messages: ChatMessage[], params: Partial<GenerationParams>, requestId: string) => {
+  ipcMain.handle('model:chat', async (event, messages: ChatMessage[], params: Partial<GenerationParams>, requestId: string) => {
 
     try {
       await engine.chat(messages, params, (token, isFinal) => {
-        event.sender.send('ai:token', { token, isFinal, requestId });
+        event.sender.send('model:token', { token, isFinal, requestId });
       });
     } catch (err: any) {
-      event.sender.send('ai:token', {
+      event.sender.send('model:token', {
         token: '',
         isFinal: true,
         requestId,
@@ -159,13 +159,13 @@ export function registerIpcHandlers(engine: AIEngine): void {
   /**
    * Raw generate (no chat template).
    */
-  ipcMain.handle('ai:generate', async (event, prompt: string, params: Partial<GenerationParams>, requestId: string) => {
+  ipcMain.handle('model:generate', async (event, prompt: string, params: Partial<GenerationParams>, requestId: string) => {
     try {
       await engine.generate(prompt, params, (token, isFinal) => {
-        event.sender.send('ai:token', { token, isFinal, requestId });
+        event.sender.send('model:token', { token, isFinal, requestId });
       });
     } catch (err: any) {
-      event.sender.send('ai:token', {
+      event.sender.send('model:token', {
         token: '',
         isFinal: true,
         requestId,
@@ -174,34 +174,34 @@ export function registerIpcHandlers(engine: AIEngine): void {
     }
   });
 
-  ipcMain.handle('ai:abort', () => {
+  ipcMain.handle('model:abort', () => {
     engine.abort();
   });
 
   // â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  ipcMain.handle('ai:get-settings', () => {
+  ipcMain.handle('model:get-settings', () => {
     return engine.getSettings();
   });
 
-  ipcMain.handle('ai:update-settings', (_event, patch: any) => {
+  ipcMain.handle('model:update-settings', (_event, patch: any) => {
     engine.updateSettings(patch);
   });
 
   // â”€â”€ Ollama Integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /** Returns whether Ollama is installed on this machine */
-  ipcMain.handle('ai:ollama-available', () => {
+  ipcMain.handle('model:ollama-available', () => {
     return engine.hasOllama();
   });
 
   /** Returns all Ollama models found locally */
-  ipcMain.handle('ai:ollama-models', () => {
+  ipcMain.handle('model:ollama-models', () => {
     return engine.getOllamaModels();
   });
 
   /** Loads an Ollama model blob directly into the inference engine */
-  ipcMain.handle('ai:load-ollama-model', async (_event, ollamaId: string, params?: Partial<GenerationParams>) => {
+  ipcMain.handle('model:load-ollama-model', async (_event, ollamaId: string, params?: Partial<GenerationParams>) => {
     return engine.loadOllamaModel(ollamaId, params);
   });
 
@@ -721,7 +721,7 @@ class SpaceGameLauncher {
   // Key design decisions:
   //   â€¢ Copies ALL google.com + google.co.* cookies from 'persist:tabs' so any
   //     existing sign-in session is forwarded â€” Google AI Mode (udm=50) only
-  //     returns AI overviews to signed-in users.
+  //     returns model overviews to signed-in users.
   //   â€¢ Uses a dedicated ephemeral session per call so webRequest filters never
   //     collide with the main tab session.
   //   â€¢ Blocks images / media / fonts to reduce load time.
@@ -750,7 +750,7 @@ class SpaceGameLauncher {
 
       // Copy cookies from the real tab session so Google sees the login state.
       // We copy all google.* domains â€” accounts.google.com, google.com, etc. â€”
-      // because the AI overview is only visible to signed-in users.
+      // because the model overview is only visible to signed-in users.
       const tabSession = electronSession.fromPartition('persist:tabs');
       tabSession.cookies.get({}).then((cookies: Electron.Cookie[]) => {
         const googleCookies = cookies.filter(

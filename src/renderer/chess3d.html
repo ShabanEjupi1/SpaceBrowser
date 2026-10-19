@@ -107,7 +107,7 @@
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M6.5 3v3.5l2.5 2"/></svg>
     New Game
   </button>
-  <button class="header-btn" id="aiToggleBtn" onclick="toggleAI()">
+  <button class="header-btn" id="computerToggleBtn" onclick="toggleAI()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M4.5 4.5h4M4.5 6.5h4M4.5 8.5h2"/></svg>
     vs Computer: Off
   </button>
@@ -288,20 +288,20 @@ function moveAtkBoard(idx, newAnchorIdx) {
   renderAtkBoards();
   render();
   updateStatus('Attack board moved — ' + (sideToMove===W?'White':'Black') + '\'s turn.');
-  if (!gameOver && aiEnabled && sideToMove===B) scheduleAI();
+  if (!gameOver && computerEnabled && sideToMove===B) scheduleComputer();
 }
 
-// ── AI state ──────────────────────────────────────────────────────────────────
-let aiEnabled = false;    // toggle via header button
-let aiThinking = false;   // prevent double triggers
+// ── computer state ──────────────────────────────────────────────────────────────────
+let computerEnabled = false;    // toggle via header button
+let computerThinking = false;   // prevent double triggers
 
 function toggleAI() {
-  aiEnabled = !aiEnabled;
-  const btn = document.getElementById('aiToggleBtn');
+  computerEnabled = !computerEnabled;
+  const btn = document.getElementById('computerToggleBtn');
   btn.textContent = '';
   const svg = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M4.5 4.5h4M4.5 6.5h4M4.5 8.5h2"/></svg>`;
-  btn.innerHTML = svg + ` vs Computer: ${aiEnabled ? '<span style="color:#34d399">On</span>' : 'Off'}`;
-  if (aiEnabled && sideToMove === B && !gameOver) scheduleAI();
+  btn.innerHTML = svg + ` vs Computer: ${computerEnabled ? '<span style="color:#34d399">On</span>' : 'Off'}`;
+  if (computerEnabled && sideToMove === B && !gameOver) scheduleComputer();
 }
 
 // Transfer squares (d4=col3row4, e4=col4row4 in 0-indexed — cols 3,4 rows 3,4)
@@ -336,7 +336,7 @@ function newGame() {
   gameOver      = false;
   castling      = { wK:true, wQ:true, bK:true, bQ:true };
   enPassantSq   = null;
-  aiThinking    = false;
+  computerThinking    = false;
   // Reset attack boards
   atkBoards = ATK_BOARD_DEFS.map(d => ({ ...d, pieces: [[null,null],[null,null]] }));
   atkModeOn = false; atkSelected = null;
@@ -598,8 +598,8 @@ function executeMove(from, to) {
 
   render();
 
-  // Trigger AI after White's move
-  if (!gameOver && aiEnabled && sideToMove === B) scheduleAI();
+  // Trigger computer after White's move
+  if (!gameOver && computerEnabled && sideToMove === B) scheduleComputer();
 }
 
 function hasAnyLegalMove(color) {
@@ -612,8 +612,8 @@ function hasAnyLegalMove(color) {
 // ── UI ─────────────────────────────────────────────────────────────────────────
 function cellClick(level, row, col) {
   if (gameOver) return;
-  // Block human input while AI is calculating
-  if (aiEnabled && sideToMove === B) return;
+  // Block human input while computer is calculating
+  if (computerEnabled && sideToMove === B) return;
   const cell = boards[level][row][col];
 
   // If a move is legal here, execute it
@@ -742,7 +742,7 @@ async function goBack() {
   try { window.history.back(); } catch(_){}
 }
 
-// ── AI Engine (minimax + alpha-beta, depth 3) ──────────────────────────────────
+// ── computer Engine (minimax + alpha-beta, depth 3) ──────────────────────────────────
 const PIECE_VALUE = { [PAWN]:100, [KNIGHT]:320, [BISHOP]:330, [ROOK]:500, [QUEEN]:900, [KING]:20000 };
 
 // Piece-square tables for the main board (white perspective, row 7 = white back rank)
@@ -896,16 +896,16 @@ function minimax(bs, castl, ep, depth, alpha, beta, maximizing) {
   }
 }
 
-function scheduleAI() {
-  if (!aiEnabled || sideToMove !== B || gameOver || aiThinking) return;
-  aiThinking = true;
+function scheduleComputer() {
+  if (!computerEnabled || sideToMove !== B || gameOver || computerThinking) return;
+  computerThinking = true;
   updateStatus('⚙️ Computer is thinking…');
 
   // Use setTimeout to yield to the UI before running the search
   setTimeout(() => {
     try {
       const moves = getAllMovesForColor(B, boards, castling, enPassantSq);
-      if (moves.length === 0) { aiThinking = false; return; }
+      if (moves.length === 0) { computerThinking = false; return; }
 
       // Depth 3 — balanced between speed and strength
       const AI_DEPTH = 3;
@@ -922,9 +922,9 @@ function scheduleAI() {
       }
       if (bestMove) executeMove(bestMove.from, bestMove.to);
     } catch (e) {
-      console.error('AI error', e);
+      console.error('computer error', e);
     } finally {
-      aiThinking = false;
+      computerThinking = false;
     }
   }, 60); // short delay so UI can repaint "Computer thinking…"
 }

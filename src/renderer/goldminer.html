@@ -113,7 +113,7 @@
   <div class="btn-row">
     <button class="ov-btn" onclick="startGame(1)">⛏️ 1 Player</button>
     <button class="ov-btn secondary" onclick="startGame(2)">🔁 2 Players</button>
-    <button class="ov-btn green" onclick="startGame('ai')">⚙️ vs Computer</button>
+    <button class="ov-btn green" onclick="startGame('computer')">⚙️ vs Computer</button>
   </div>
 </div>
 
@@ -209,8 +209,8 @@ let speedBoost=false, magnetTime=0, scoreBoostCount=0;
 
 // Multi-player state
 let numPlayers=1, currentPlayer=1, scores={}, playerScores={};
-let aiActive=false;
-let aiThinkTimer=null;
+let computerActive=false;
+let computerThinkTimer=null;
 
 // Claw state per player
 let claws={};
@@ -220,7 +220,7 @@ function initClaw(p) {
 }
 
 function pivotX(p) {
-  if (numPlayers===1||gameMode==='ai') return canvas.width/2;
+  if (numPlayers===1||gameMode==='computer') return canvas.width/2;
   return p===1 ? canvas.width*0.25 : canvas.width*0.75;
 }
 const PIVOT_Y = MINER_Y;
@@ -248,7 +248,7 @@ function generateItems(lv) {
 function initLevel() {
   items=generateItems(level); particles=[]; floatingTexts=[];
   for(let p=1;p<=numPlayers;p++) initClaw(p);
-  if(gameMode==='ai') initClaw(2);
+  if(gameMode==='computer') initClaw(2);
   speedBoost=false; magnetTime=0;
   updateHUD();
 }
@@ -258,14 +258,14 @@ function startGame(mode) {
   clearInterval(timerHandle); timerHandle = null;
   cancelAnimationFrame(rafId);  rafId = 0;
 
-  gameMode=mode; numPlayers=mode==='ai'?1:mode;
-  aiActive=(mode==='ai');
+  gameMode=mode; numPlayers=mode==='computer'?1:mode;
+  computerActive=(mode==='computer');
   document.getElementById('menuOverlay').style.display='none';
   overlay.style.display='none';
 
   // Reset player state
   currentPlayer=1;
-  if(numPlayers===2||aiActive) {
+  if(numPlayers===2||computerActive) {
     scores={1:0,2:0}; dynamites={1:0,2:0};
     playerScores={1:0,2:0};
     document.getElementById('p2ScoreBadge').style.display='flex';
@@ -344,8 +344,8 @@ function gameOver(won) {
   const totalScore=Object.values(scores).reduce((a,b)=>a+b,0);
   const stars=won?'🏆':(level>=15?'🥈':level>=10?'🥉':'💸');
   let winnerText='';
-  if(numPlayers===2||aiActive) {
-    const w=scores[1]>=scores[2]?'Player 1':(aiActive?'Computer':'Player 2');
+  if(numPlayers===2||computerActive) {
+    const w=scores[1]>=scores[2]?'Player 1':(computerActive?'Computer':'Player 2');
     winnerText='<br>Winner: <strong style="color:#fbbf24;">'+w+'</strong>';
   }
   document.getElementById('ovTitle').textContent=won?'🏆 You Win!':stars+' Time\'s Up!';
@@ -359,12 +359,12 @@ function gameOver(won) {
 function updateHUD() {
   const totalGoal=Object.values(scores).reduce((a,b)=>a+b,0);
   document.getElementById('p1ScoreBadge').textContent='P1 💰$'+(scores[1]||0);
-  document.getElementById('p2ScoreBadge').textContent=(aiActive?'⚙️ CPU':'P2')+' 💰$'+(scores[2]||0);
+  document.getElementById('p2ScoreBadge').textContent=(computerActive?'⚙️ CPU':'P2')+' 💰$'+(scores[2]||0);
   document.getElementById('goalBadge').textContent='Goal: $'+GOALS[level];
   document.getElementById('levelBadge').textContent='Lv '+level+'/'+MAX_LEVEL;
   document.getElementById('dynBadge').textContent='💣 ×'+(dynamites[currentPlayer]||0);
-  if(numPlayers===2||aiActive)
-    document.getElementById('turnBadge').textContent=(currentPlayer===1?'P1':(aiActive?'CPU':'P2'))+"'s Turn";
+  if(numPlayers===2||computerActive)
+    document.getElementById('turnBadge').textContent=(currentPlayer===1?'P1':(computerActive?'CPU':'P2'))+"'s Turn";
 }
 
 // ── Input ──────────────────────────────────────────────────────────────────────
@@ -393,8 +393,8 @@ function useDynamite(p) {
   claws[p].state='retracting'; updateHUD();
 }
 
-// ── AI ──────────────────────────────────────────────────────────────────────
-let aiPhase='wait';
+// ── computer ──────────────────────────────────────────────────────────────────────
+let computerPhase='wait';
 function updateAI() {
   const cl=claws[2]; if(!cl) return;
   if(cl.state==='swinging') {
@@ -432,9 +432,9 @@ function update() {
     });
   }
 
-  if(aiActive) updateAI();
+  if(computerActive) updateAI();
 
-  const playersToUpdate = numPlayers===2 ? [1,2] : (aiActive?[1,2]:[1]);
+  const playersToUpdate = numPlayers===2 ? [1,2] : (computerActive?[1,2]:[1]);
   playersToUpdate.forEach(p=>{
     const cl=claws[p]; if(!cl) return;
     const px=pivotX(p), py=PIVOT_Y;
@@ -556,7 +556,7 @@ function draw(){
   for(const it of items){ if(!it.grabbed) drawItem(it); }
 
   // Ropes & claws for each player
-  const playersToRender=numPlayers===2?[1,2]:(aiActive?[1,2]:[1]);
+  const playersToRender=numPlayers===2?[1,2]:(computerActive?[1,2]:[1]);
   playersToRender.forEach(p=>{
     const cl=claws[p]; if(!cl) return;
     const px=pivotX(p),py=PIVOT_Y;
@@ -658,7 +658,7 @@ function drawMinerPlatform(px,py,p){
   ctx.strokeStyle=p===2?'rgba(147,197,253,0.5)':'rgba(254,243,199,0.4)';ctx.lineWidth=1;ctx.stroke();
   // Player label
   ctx.fillStyle=p===2?'#93c5fd':'#fbbf24'; ctx.font='bold 8px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(p===2&&aiActive?'CPU':'P'+p,0,-16);
+  ctx.fillText(p===2&&computerActive?'CPU':'P'+p,0,-16);
   // Rope attachment
   ctx.fillStyle='#78350f'; ctx.beginPath(); ctx.arc(0,4,5,0,Math.PI*2); ctx.fill();
   ctx.restore();

@@ -1,5 +1,5 @@
 /**
- * Space Browser – AI Engine (TypeScript wrapper)
+ * Space Browser – model Engine (TypeScript wrapper)
  * ------------------------------------------------
  * Wraps the native GGUF inference addon.
  * Runs in the Electron main process.
@@ -56,7 +56,7 @@ export interface ChatMessage {
 
 export type TokenCallback = (token: string, isFinal: boolean) => void;
 
-interface AIEngineSettings {
+interface ModelEngineSettings {
   modelsDir: string;
   activeModelId: string | null;
   defaultParams: GenerationParams;
@@ -66,7 +66,7 @@ interface AIEngineSettings {
 
 // ── Default settings ──────────────────────────────────────────────────────────
 
-const DEFAULT_SETTINGS: AIEngineSettings = {
+const DEFAULT_SETTINGS: ModelEngineSettings = {
   modelsDir: '',
   activeModelId: null,
   defaultParams: {
@@ -83,11 +83,11 @@ const DEFAULT_SETTINGS: AIEngineSettings = {
   nGpuLayers: 0,
 };
 
-// ── AIEngine class ────────────────────────────────────────────────────────────
+// ── ModelEngine class ────────────────────────────────────────────────────────────
 
-export class AIEngine {
+export class ModelEngine {
   private addon: any;
-  private settings: Store<AIEngineSettings>;
+  private settings: Store<ModelEngineSettings>;
   private modelsDir: string;
   private isGenerating = false;
 
@@ -115,16 +115,16 @@ export class AIEngine {
 
     try {
       this.addon = require(addonPath);
-      console.log('[AIEngine] Native inference addon loaded from:', addonPath);
+      console.log('[ModelEngine] Native inference addon loaded from:', addonPath);
     } catch (err) {
-      console.error('[AIEngine] Failed to load native addon:', err);
-      console.error('[AIEngine] Run: npm run build:native');
+      console.error('[ModelEngine] Failed to load native addon:', err);
+      console.error('[ModelEngine] Run: npm run build:native');
       this.addon = null;
     }
 
     // Persistent settings via electron-store
-    this.settings = new Store<AIEngineSettings>({
-      name: 'ai-engine',
+    this.settings = new Store<ModelEngineSettings>({
+      name: 'model-engine',
       defaults: DEFAULT_SETTINGS,
     });
 
@@ -138,7 +138,7 @@ export class AIEngine {
 
   async initialize(): Promise<void> {
     if (!this.addon) {
-      console.warn('[AIEngine] Addon not available – inference disabled');
+      console.warn('[ModelEngine] Addon not available – inference disabled');
       return;
     }
     await this.scanModels();
@@ -160,7 +160,7 @@ export class AIEngine {
     try {
       return this.addon.scanModels(this.modelsDir) as ModelInfo[];
     } catch (err) {
-      console.error('[AIEngine] scanModels failed:', err);
+      console.error('[ModelEngine] scanModels failed:', err);
       return [];
     }
   }
@@ -193,12 +193,12 @@ export class AIEngine {
     const ollamaModels = this.getOllamaModels();
     const om = ollamaModels.find(m => m.id === ollamaId);
     if (!om) {
-      console.error('[AIEngine] Ollama model not found:', ollamaId);
+      console.error('[ModelEngine] Ollama model not found:', ollamaId);
       return false;
     }
 
     if (!fs.existsSync(om.blobPath)) {
-      console.error('[AIEngine] Ollama blob missing at:', om.blobPath);
+      console.error('[ModelEngine] Ollama blob missing at:', om.blobPath);
       return false;
     }
 
@@ -209,7 +209,7 @@ export class AIEngine {
       nGpuLayers: this.settings.get('gpuEnabled') ? this.settings.get('nGpuLayers') : 0,
     };
 
-    console.log(`[AIEngine] Loading Ollama model: ${om.name} from ${om.blobPath}`);
+    console.log(`[ModelEngine] Loading Ollama model: ${om.name} from ${om.blobPath}`);
     const ok = this.addon.loadModel(om.blobPath, mergedParams) as boolean;
     if (ok) {
       this.settings.set('activeModelId', ollamaId);
@@ -231,7 +231,7 @@ export class AIEngine {
     try {
       return this.addon.addModel(sourcePath, modelId ?? '') as ModelInfo;
     } catch (err) {
-      console.error('[AIEngine] addModel failed:', err);
+      console.error('[ModelEngine] addModel failed:', err);
       return null;
     }
   }
@@ -251,7 +251,7 @@ export class AIEngine {
     const models = this.listModels();
     const model = models.find(m => m.id === modelId);
     if (!model) {
-      console.error('[AIEngine] Model not found:', modelId);
+      console.error('[ModelEngine] Model not found:', modelId);
       return false;
     }
 
@@ -262,7 +262,7 @@ export class AIEngine {
       nGpuLayers: this.settings.get('gpuEnabled') ? this.settings.get('nGpuLayers') : 0,
     };
 
-    console.log(`[AIEngine] Loading model: ${model.name} (${model.arch})`);
+    console.log(`[ModelEngine] Loading model: ${model.name} (${model.arch})`);
     const ok = this.addon.loadModel(model.path, mergedParams) as boolean;
     if (ok) {
       this.settings.set('activeModelId', modelId);
@@ -373,7 +373,7 @@ export class AIEngine {
 
   // ── Settings ────────────────────────────────────────────────────────────────
 
-  getSettings(): AIEngineSettings {
+  getSettings(): ModelEngineSettings {
     return {
       modelsDir: this.modelsDir,
       activeModelId: this.settings.get('activeModelId'),
@@ -383,7 +383,7 @@ export class AIEngine {
     };
   }
 
-  updateSettings(patch: Partial<AIEngineSettings>): void {
+  updateSettings(patch: Partial<ModelEngineSettings>): void {
     if (patch.modelsDir) {
       this.modelsDir = patch.modelsDir;
       this.settings.set('modelsDir', patch.modelsDir);
@@ -432,4 +432,4 @@ export class AIEngine {
 }
 
 // Singleton export
-export const aiEngine = new AIEngine();
+export const modelEngine = new ModelEngine();

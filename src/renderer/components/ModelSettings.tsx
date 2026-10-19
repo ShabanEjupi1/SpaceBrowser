@@ -1,9 +1,9 @@
 /**
- * Space Browser – AI Settings Component
+ * Space Browser – model Settings Component
  */
 
 import React, { useState, useEffect } from 'react';
-import styles from '../styles/AISettings.module.scss';
+import styles from '../styles/ModelSettings.module.scss';
 
 interface SearchEngineOption { key: string; name: string; }
 
@@ -12,7 +12,7 @@ interface Props {
   onSystemPromptChange: (prompt: string) => void;
 }
 
-export const AISettings: React.FC<Props> = ({ systemPrompt, onSystemPromptChange }) => {
+export const ModelSettings: React.FC<Props> = ({ systemPrompt, onSystemPromptChange }) => {
   const api = (window as any).spaceAPI;
 
   const [temperature, setTemperature] = useState(0.7);
@@ -40,7 +40,7 @@ export const AISettings: React.FC<Props> = ({ systemPrompt, onSystemPromptChange
 
   const handleSave = async () => {
     onSystemPromptChange(systemPromptLocal);
-    await api.ai.updateSettings({
+    await api.model.updateSettings({
       defaultParams: { temperature, topP, topK, nPredict, nCtx },
       nGpuLayers,
       gpuEnabled: nGpuLayers > 0,
@@ -53,7 +53,7 @@ export const AISettings: React.FC<Props> = ({ systemPrompt, onSystemPromptChange
     const dir = await api.dialog.selectModelsDir();
     if (dir) {
       setModelsDir(dir);
-      await api.ai.updateSettings({ modelsDir: dir });
+      await api.model.updateSettings({ modelsDir: dir });
     }
   };
 

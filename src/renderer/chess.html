@@ -419,7 +419,7 @@
     .status-dot.check  { background: var(--danger); }
     .status-dot.mate   { background: var(--danger); }
     .status-dot.draw   { background: var(--text-secondary); }
-    .status-dot.ai     { background: var(--accent-light); animation: pulse 1.5s ease-in-out infinite; }
+    .status-dot.computer     { background: var(--accent-light); animation: pulse 1.5s ease-in-out infinite; }
 
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
@@ -903,7 +903,7 @@
 //  A complete chess implementation with:
 //    • Full legal move generation (including en passant, castling, promotion)
 //    • Check / checkmate / stalemate / 50-move / threefold-repetition detection
-//    • Alpha-beta pruning minimax AI with iterative deepening
+//    • Alpha-beta pruning minimax computer with iterative deepening
 //    • Piece-square tables for positional evaluation
 //    • Game history saved locally via spaceAPI (electron-store) when available
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -992,8 +992,8 @@ let positionHistory = [];   // for threefold-repetition
 let boardFlipped = false;
 let playerColor = WHITE;    // human plays white by default
 let gameMode = 'solo';      // 'solo' | 'local2p'
-let aiDepth = 3;
-let aiThinking = false;
+let computerDepth = 3;
+let computerThinking = false;
 let gameOver = false;
 let lastFrom = -1, lastTo = -1;
 let capturedByWhite = [], capturedByBlack = [];
@@ -1038,7 +1038,7 @@ function initBoard() {
   lastFrom = -1; lastTo = -1;
   capturedByWhite = []; capturedByBlack = [];
   clocks = [CLOCK_START, CLOCK_START];
-  aiThinking = false;
+  computerThinking = false;
   gamePaused = false;
   const pb = document.getElementById('pauseBtn');
   if (pb) { pb.textContent = '⏸ Pause'; pb.classList.remove('active'); }
@@ -1117,7 +1117,7 @@ function renderBoard() {
 // ── Click Handling ─────────────────────────────────────────────────────────────
 
 function handleCellClick(sq) {
-  if (gameOver || aiThinking || gamePaused) return;
+  if (gameOver || computerThinking || gamePaused) return;
   if (gameMode !== 'local2p' && sideToMove !== playerColor) return;
 
   const piece = board[sq];
@@ -1216,7 +1216,7 @@ function applyMoveAndAdvance(move) {
   }
 
   if (!gameOver && gameMode === 'solo' && sideToMove !== playerColor) {
-    scheduleAI();
+    scheduleComputer();
   }
 }
 
@@ -1309,40 +1309,40 @@ function isInsufficientMaterial(b) {
   return false;
 }
 
-// ── AI (Alpha-Beta Minimax) ────────────────────────────────────────────────────
+// ── computer (Alpha-Beta Minimax) ────────────────────────────────────────────────────
 
-function scheduleAI() {
+function scheduleComputer() {
   if (gameOver || sideToMove === playerColor || gamePaused) return;
-  if (aiThinking) return; // already computing, don't double-schedule
-  aiThinking = true;
+  if (computerThinking) return; // already computing, don't double-schedule
+  computerThinking = true;
   updateStatus();
   renderBoard(); // force-paint "Computer thinking..." before blocking computation
 
-  // Safety watchdog: if AI takes > 15 s, reset so the game doesn't freeze permanently
+  // Safety watchdog: if computer takes > 15 s, reset so the game doesn't freeze permanently
   const watchdog = setTimeout(() => {
-    if (aiThinking) { aiThinking = false; updateStatus(); }
+    if (computerThinking) { computerThinking = false; updateStatus(); }
   }, 15000);
 
   // Use a small delay so the browser definitely repaints before we run minimax
   setTimeout(function runAI() {
     clearTimeout(watchdog);
     // Guard: state may have changed (e.g. game reset, pause) while we were waiting
-    if (gameOver || sideToMove === playerColor || !aiThinking || gamePaused) {
-      aiThinking = false;
+    if (gameOver || sideToMove === playerColor || !computerThinking || gamePaused) {
+      computerThinking = false;
       updateStatus();
       return;
     }
     try {
-      const move = findBestMoveIterative(board, aiDepth, sideToMove, castling, enPassantSq);
-      aiThinking = false;
+      const move = findBestMoveIterative(board, computerDepth, sideToMove, castling, enPassantSq);
+      computerThinking = false;
       if (move && !gameOver && sideToMove !== playerColor && !gamePaused) {
         applyMoveAndAdvance(move);
       } else {
         updateStatus();
       }
     } catch (err) {
-      console.error('[Chess AI] Error:', err);
-      aiThinking = false;
+      console.error('[Chess computer] Error:', err);
+      computerThinking = false;
       updateStatus();
     }
   }, 80);
@@ -1792,8 +1792,8 @@ function updateStatus() {
     return;
   }
 
-  if (aiThinking) {
-    dot.className = 'status-dot ai';
+  if (computerThinking) {
+    dot.className = 'status-dot computer';
     text.textContent = 'Computer is thinking…';
     return;
   }
@@ -1826,7 +1826,7 @@ function showGameOver(title, sub) {
   dot.className  = 'status-dot mate';
   text.textContent = title;
 
-  saveSession('chess', { result: title, detail: sub, moves: moveHistory ? moveHistory.length : 0, mode: gameMode || 'vs-ai' });
+  saveSession('chess', { result: title, detail: sub, moves: moveHistory ? moveHistory.length : 0, mode: gameMode || 'vs-computer' });
 }
 
 // ── Clock ──────────────────────────────────────────────────────────────────────
@@ -1834,7 +1834,7 @@ function showGameOver(title, sub) {
 function startClock() {
   stopClock();
   clockInterval = setInterval(() => {
-    if (gameOver || aiThinking || gamePaused) return;
+    if (gameOver || computerThinking || gamePaused) return;
     clocks[sideToMove]--;
     if (clocks[sideToMove] <= 0) {
       clocks[sideToMove] = 0;
@@ -1886,14 +1886,14 @@ function startNewGame() {
   updateSideUI();
 
   if (gameMode === 'solo' && playerColor === BLACK) {
-    scheduleAI(); // AI goes first as white
+    scheduleComputer(); // computer goes first as white
   }
 }
 
-// Undo the last full move (player + AI response, or just player if at start)
+// Undo the last full move (player + computer response, or just player if at start)
 function undoMove() {
-  if (aiThinking) return; // don't undo while AI is computing
-  // In local 2P: undo just the last half-move; in solo: undo player+AI pair
+  if (computerThinking) return; // don't undo while computer is computing
+  // In local 2P: undo just the last half-move; in solo: undo player+computer pair
   const undoCount = gameMode === 'local2p'
     ? (undoStack.length >= 1 ? 1 : 0)
     : (undoStack.length >= 2 ? 2 : undoStack.length);
@@ -1920,7 +1920,7 @@ function undoMove() {
   gameOver = false;
   selected = -1;
   legalMovesCache = [];
-  aiThinking = false;
+  computerThinking = false;
   if (gameMode === 'local2p') {
     boardFlipped = sideToMove === BLACK;
   }
@@ -1936,7 +1936,7 @@ function flipBoard() {
 }
 
 function setDifficulty(depth, label) {
-  aiDepth = depth;
+  computerDepth = depth;
   document.getElementById('diffLabel').textContent = label;
   document.querySelectorAll('.diff-btn[data-depth]').forEach(b => {
     b.classList.toggle('active', Number(b.dataset.depth) === depth);
@@ -1971,9 +1971,9 @@ function togglePause() {
     startClock();
     btn.textContent = '⏸ Pause';
     btn.classList.remove('active');
-    // Resume AI if it was AI's turn
-    if (!aiThinking && sideToMove !== playerColor) {
-      scheduleAI();
+    // Resume computer if it was the computer's turn
+    if (!computerThinking && sideToMove !== playerColor) {
+      scheduleComputer();
     }
     updateStatus();
   }
@@ -2133,8 +2133,8 @@ renderBoard();
 updateSideUI();
 loadSavedGames();
 
-// If player is black, AI moves first
-if (playerColor === BLACK) scheduleAI();
+// If player is black, computer moves first
+if (playerColor === BLACK) scheduleComputer();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MULTIPLAYER (WebSocket)
@@ -2169,7 +2169,7 @@ function setMode(mode) {
   document.querySelector('.main').style.display = isSoloOrLocal ? 'flex' : 'none';
   document.getElementById('multiPanel').style.display = mode === 'multi' ? 'block' : 'none';
 
-  // Show/hide AI-only settings
+  // Show/hide computer-only settings
   const isLocal2p = mode === 'local2p';
   const diffEl = document.getElementById('soloOnlyDifficulty');
   const soloEl = document.getElementById('soloOnlySettings');

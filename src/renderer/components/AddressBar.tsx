@@ -1,7 +1,7 @@
 /**
  * Space Browser – Address Bar Component
  * Supports URL input, search queries, navigation controls,
- * bookmark toggle, settings, AI sidebar toggle, and pinned extensions.
+ * bookmark toggle, settings, model sidebar toggle, and pinned extensions.
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -71,13 +71,13 @@ const BookmarkIcon: React.FC<{ filled: boolean }> = ({ filled }) => (
   </svg>
 );
 
-const AISparkIcon = () => (
+const ModelSparkIcon = () => (
   <svg viewBox="0 0 18 18" width="15" height="15" fill="none" aria-hidden="true">
     <path d="M9 1 L10.8 6.8 L17 9 L10.8 11.2 L9 17 L7.2 11.2 L1 9 L7.2 6.8 Z"
-          fill="url(#aiShipGrad)" stroke="none" />
+          fill="url(#modelShipGrad)" stroke="none" />
     <defs>
       {/* Amber → teal – matches Spaceship sidebar identity */}
-      <linearGradient id="aiShipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <linearGradient id="modelShipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%"   stopColor="#fcd34d" />
         <stop offset="55%"  stopColor="#d97706" />
         <stop offset="100%" stopColor="#0d9488" />
@@ -517,16 +517,16 @@ export const AddressBar: React.FC<Props> = ({
           </button>
         )}
 
-        {/* AI sidebar toggle */}
+        {/* model sidebar toggle */}
         <button
-          className={`${styles.aiToggleBtn} ${sidebarOpen ? styles.active : ''}`}
+          className={`${styles.modelToggleBtn} ${sidebarOpen ? styles.active : ''}`}
           onClick={onToggleSidebar}
           title="Toggle Assistant Sidebar (Ctrl+Shift+A)"
           aria-label={sidebarOpen ? 'Close assistant sidebar' : 'Open assistant sidebar'}
           aria-pressed={sidebarOpen}
         >
-          <AISparkIcon />
-          <span className={styles.aiLabel}>Model</span>
+          <ModelSparkIcon />
+          <span className={styles.modelLabel}>Model</span>
         </button>
       </div>
     </div>

@@ -30,8 +30,8 @@
     }
     .badge.active { border-color:rgba(34,197,94,0.5); color:#4ade80; }
     .badge.tourn  { border-color:rgba(234,179,8,0.5); color:#fbbf24; }
-    .badge.ai-think { border-color:rgba(99,102,241,0.5); color:#a5b4fc; display:none; }
-    .badge.ai-think.vis { display:flex; }
+    .badge.computer-think { border-color:rgba(99,102,241,0.5); color:#a5b4fc; display:none; }
+    .badge.computer-think.vis { display:flex; }
     .canvas-area {
       flex:1; display:flex; flex-direction:column;
       align-items:center; justify-content:center;
@@ -89,7 +89,7 @@
     <div class="badge" id="p2Badge">P2 --</div>
     <div class="badge" id="turnBadge">-</div>
     <div class="badge tourn" id="tournBadge" style="display:none;">Tournament</div>
-    <div class="badge ai-think" id="aiThink">Computer thinking</div>
+    <div class="badge computer-think" id="computerThink">Computer thinking</div>
   </div>
 </div>
 <div class="canvas-area">
@@ -412,9 +412,9 @@ class TournamentManager {
 }
 
 /* ============================================================
- *  AIPlayer - Ghost-ball shot selection + placement logic
+ *  ComputerPlayer - Ghost-ball shot selection + placement logic
  * ============================================================ */
-class AIPlayer {
+class ComputerPlayer {
   /**
    * @param {Ball[]} balls
    * @param {{ x:number, y:number }[]} pockets
@@ -519,7 +519,7 @@ class AIPlayer {
 
   //  Private helpers 
 
-  /** Get the balls the AI should be targeting this turn. */
+  /** Get the balls the computer should be targeting this turn. */
   _getTargets(turn, assignedSolids) {
     const { BALL_R } = TableConfig;
     let min, max;
@@ -851,7 +851,7 @@ class BilliardsGame {
     this._balls    = [];
     this._pockets  = [];
     this._physics  = null;
-    this._ai       = null;
+    this._computer       = null;
     this._cue      = new CueController(this._canvas, this._balls);
 
     // Game state
@@ -909,7 +909,7 @@ class BilliardsGame {
     this._pockets = this._makePockets();
     this._balls   = this._makeRack();
     this._physics = new PhysicsEngine(this._balls, this._pockets);
-    this._ai      = new AIPlayer(this._balls, this._pockets, this._physics);
+    this._computer      = new ComputerPlayer(this._balls, this._pockets, this._physics);
     this._cue._balls = this._balls;
 
     this._state   = 'aiming';
@@ -1006,7 +1006,7 @@ class BilliardsGame {
     const cueBall = this._getCueBall();
 
     // Placement overlay
-    if (this._cueReplacing && !this._isAITurn()) {
+    if (this._cueReplacing && !this._isComputerTurn()) {
       const mx = this._cue.mousePos.x, my = this._cue.mousePos.y;
       const onTable = this._isOnTable(mx, my, !this._ballInHandAnywhere);
       const blocked  = this._isCueBlocked(mx, my);
@@ -1017,7 +1017,7 @@ class BilliardsGame {
     }
 
     // Aim guide
-    if (this._state === 'aiming' && !this._cueReplacing && !this._isAITurn()) {
+    if (this._state === 'aiming' && !this._cueReplacing && !this._isComputerTurn()) {
       this._cue.draw(ctx, cueBall);
     }
 
@@ -1160,25 +1160,25 @@ class BilliardsGame {
     }, 2000);
   }
 
-  /*  Private: AI  */
+  /*  Private: computer  */
 
   _scheduleAI() {
-    if (!this._isAITurn()) return;
+    if (!this._isComputerTurn()) return;
     clearTimeout(this._aiTimer);
-    document.getElementById('aiThink').classList.add('vis');
+    document.getElementById('computerThink').classList.add('vis');
     if (this._cueReplacing) {
-      this._aiTimer = setTimeout(() => this._doAIPlace(), 700 + Math.random() * 400);
+      this._aiTimer = setTimeout(() => this._doComputerPlace(), 700 + Math.random() * 400);
     } else if (this._state === 'aiming') {
-      this._aiTimer = setTimeout(() => this._doAIShoot(), 900 + Math.random() * 600);
+      this._aiTimer = setTimeout(() => this._doComputerShoot(), 900 + Math.random() * 600);
     }
   }
 
-  _doAIPlace() {
-    document.getElementById('aiThink').classList.remove('vis');
+  _doComputerPlace() {
+    document.getElementById('computerThink').classList.remove('vis');
     if (!this._cueReplacing) return;
     const cueBall = this._getCueBall();
     if (!cueBall) return;
-    this._ai.placeCueBall(cueBall, this._turn, {
+    this._computer.placeCueBall(cueBall, this._turn, {
       assignedSolids: this._assignedSolids,
       ballInHandAnywhere: this._ballInHandAnywhere,
     });
@@ -1190,19 +1190,19 @@ class BilliardsGame {
     this._scheduleAI();
   }
 
-  _doAIShoot() {
-    document.getElementById('aiThink').classList.remove('vis');
+  _doComputerShoot() {
+    document.getElementById('computerThink').classList.remove('vis');
     if (this._state !== 'aiming') return;
     const cueBall = this._getCueBall();
     if (!cueBall) return;
     this._physics.resetShot();
-    this._ai.executeShot(cueBall, this._turn, { assignedSolids: this._assignedSolids });
+    this._computer.executeShot(cueBall, this._turn, { assignedSolids: this._assignedSolids });
     this._state   = 'rolling';
     this._settled = false;
     this._isBreak = false;
   }
 
-  _isAITurn() {
+  _isComputerTurn() {
     if (this._mode === 'pve' && this._turn === 2) return true;
     if (this._mode === 'tournament' && this._tourney) {
       const m    = this._tourney.currentMatch;
@@ -1221,7 +1221,7 @@ class BilliardsGame {
       if (this._cueReplacing) {
         this._tryPlaceCue(); return;
       }
-      if (!this._isAITurn() && this._state === 'aiming') {
+      if (!this._isComputerTurn() && this._state === 'aiming') {
         this._cue.beginCharge();
       }
     });

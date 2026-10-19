@@ -24,8 +24,8 @@
       --accent-glow:  rgba(37,99,235,0.18);
       --green:        #22c55e;
       --red:          #f87171;
-      --ai-border:    rgba(99,102,241,0.35);
-      --ai-glow:      rgba(99,102,241,0.10);
+      --model-border:    rgba(99,102,241,0.35);
+      --model-glow:      rgba(99,102,241,0.10);
       --radius:       12px;
       --radius-sm:    8px;
     }
@@ -251,33 +251,33 @@
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
 
-    /* -- AI ANSWER CARD --------------------------------------------- */
-    .ai-card {
-      background: var(--surface); border: 1px solid var(--ai-border);
+    /* -- model ANSWER CARD --------------------------------------------- */
+    .model-card {
+      background: var(--surface); border: 1px solid var(--model-border);
       border-radius: 16px; overflow: hidden;
-      box-shadow: 0 0 0 1px var(--ai-glow), 0 4px 24px rgba(0,0,0,0.3);
+      box-shadow: 0 0 0 1px var(--model-glow), 0 4px 24px rgba(0,0,0,0.3);
     }
-    .ai-hdr {
+    .model-hdr {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 16px; border-bottom: 1px solid rgba(99,102,241,0.15);
       background: rgba(99,102,241,0.05);
     }
-    .ai-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #a5b4fc; }
-    .ai-model { font-size: 11px; color: var(--text-3); margin-left: auto; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: 5px; padding: 2px 8px; }
-    .ai-body {
+    .model-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #a5b4fc; }
+    .model-model { font-size: 11px; color: var(--text-3); margin-left: auto; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: 5px; padding: 2px 8px; }
+    .model-body {
       padding: 16px 18px; font-size: 14px; line-height: 1.8;
       color: var(--text); min-height: 48px; white-space: pre-wrap; word-wrap: break-word;
     }
-    .ai-body code { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.2); border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: 12.5px; color: #c4b5fd; }
-    .ai-footer {
+    .model-body code { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.2); border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: 12.5px; color: #c4b5fd; }
+    .model-footer {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 16px; border-top: 1px solid rgba(99,102,241,0.10);
       background: rgba(99,102,241,0.025);
     }
-    .ai-footer-note { font-size: 11px; color: var(--text-3); flex: 1; }
-    .ai-stop { background: none; border: 1px solid rgba(248,113,113,0.3); border-radius: 5px; color: #fca5a5; font-size: 11px; padding: 3px 9px; cursor: pointer; display: none; align-items: center; gap: 4px; }
-    .ai-stop.vis { display: flex; }
-    .ai-stop:hover { background: rgba(248,113,113,0.08); }
+    .model-footer-note { font-size: 11px; color: var(--text-3); flex: 1; }
+    .model-stop { background: none; border: 1px solid rgba(248,113,113,0.3); border-radius: 5px; color: #fca5a5; font-size: 11px; padding: 3px 9px; cursor: pointer; display: none; align-items: center; gap: 4px; }
+    .model-stop.vis { display: flex; }
+    .model-stop:hover { background: rgba(248,113,113,0.08); }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
     .cursor { display: inline-block; width: 2px; height: 1em; background: #a5b4fc; vertical-align: text-bottom; animation: blink 1s ease infinite; margin-left: 2px; }
 
@@ -414,7 +414,7 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 700;
     }
-    .gai-avatar.space-ai {
+    .gai-avatar.space-model {
       background: linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
       color: #fff;
     }
@@ -486,22 +486,22 @@
     }
 
     /* Local model action row — shown when Google has no overview */
-    .gai-local-ai-row {
+    .gai-local-model-row {
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 14px; flex-shrink: 0;
       border-top: 1px solid rgba(255,255,255,0.05);
       background: rgba(99,102,241,0.04);
     }
-    .gai-local-ai-lbl { font-size: 11.5px; color: #666688; }
-    .gai-local-ai-btn {
+    .gai-local-model-lbl { font-size: 11.5px; color: #666688; }
+    .gai-local-model-btn {
       display: flex; align-items: center; gap: 5px;
       background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
       border-radius: 8px; color: #a5b4fc; font-size: 12px; font-weight: 600;
       padding: 5px 12px; cursor: pointer; transition: background 0.14s, border-color 0.14s;
       font-family: inherit;
     }
-    .gai-local-ai-btn:hover { background: rgba(99,102,241,0.26); border-color: rgba(99,102,241,0.5); color: #c7d2fe; }
-    .gai-local-ai-btn:disabled { opacity: 0.4; cursor: default; }
+    .gai-local-model-btn:hover { background: rgba(99,102,241,0.26); border-color: rgba(99,102,241,0.5); color: #c7d2fe; }
+    .gai-local-model-btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Trigger button floating on results */
     #gai-trigger {
@@ -666,7 +666,7 @@
   <div class="main-col" id="mainCol">
     <div class="results-meta" id="resultsMeta"></div>
 
-    <!-- No AI model notice -->
+    <!-- No model model notice -->
     <div class="notice" id="noModelNotice">
       <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.5" stroke="#fbbf24" stroke-width="1.5"/><line x1="10" y1="6" x2="10" y2="11" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14" r="0.8" fill="#fbbf24"/></svg>
       No language model loaded — <a id="loadModelLink">load a model in Settings</a> to get model answers.
@@ -675,22 +675,22 @@
     <!-- Quick Answer -->
     <div class="quick-ans" id="quickAns"></div>
 
-    <!-- AI Card -->
-    <div class="ai-card" id="aiCard" style="display:none;">
-      <div class="ai-hdr">
-        <div class="ai-badge">
+    <!-- model Card -->
+    <div class="model-card" id="modelCard" style="display:none;">
+      <div class="model-hdr">
+        <div class="model-badge">
           <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
             <path d="M9 1 L10.8 6.8 L17 9 L10.8 11.2 L9 17 L7.2 11.2 L1 9 L7.2 6.8 Z" fill="url(#aig)" />
             <defs><linearGradient id="aig" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#93c5fd"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs>
           </svg>
           Space Assistant
         </div>
-        <div class="ai-model" id="aiModelLabel">Loading…</div>
-        <button class="ai-stop" id="aiStopBtn">¦ Stop</button>
+        <div class="model-model" id="activeModelLabel">Loading…</div>
+        <button class="model-stop" id="modelStopBtn">¦ Stop</button>
       </div>
-      <div class="ai-body" id="aiBody"></div>
-      <div class="ai-footer">
-        <span class="ai-footer-note">Generated by your local language model. Always verify important information.</span>
+      <div class="model-body" id="modelBody"></div>
+      <div class="model-footer">
+        <span class="model-footer-note">Generated by your local language model. Always verify important information.</span>
       </div>
     </div>
 
@@ -774,9 +774,9 @@
   </div>
 
   <!-- Local model action row (hidden until user requests it) -->
-  <div class="gai-local-ai-row" id="gai-local-ai-row" style="display:none;">
-    <span class="gai-local-ai-lbl">Want a local model answer instead?</span>
-    <button class="gai-local-ai-btn" id="gai-local-ai-btn">
+  <div class="gai-local-model-row" id="gai-local-model-row" style="display:none;">
+    <span class="gai-local-model-lbl">Want a local model answer instead?</span>
+    <button class="gai-local-model-btn" id="gai-local-model-btn">
       <svg width="11" height="11" viewBox="0 0 18 18" fill="none">
         <path d="M9 1 L10.8 6.8 L17 9 L10.8 11.2 L9 17 L7.2 11.2 L1 9 L7.2 6.8 Z" fill="currentColor"/>
       </svg>
@@ -805,7 +805,7 @@
  *    History      — localStorage, 25 entries, v4 key.
  *    Cache        — In-memory 5-minute TTL per (query, tab, page).
  *    AC           — Autocomplete: local history + DDG suggestions.
- *    AI           — Local LLM streaming via spaceAPI.ai.
+ *    model           — Local LLM streaming via spaceAPI.model.
  *    Search       — Orchestrator: init, run, render, paginate.
  *
  *  Search sources (all fired in parallel, merged + deduplicated):
@@ -1378,25 +1378,25 @@ var AC = {
   _close: function() { this._dropdown.classList.remove('open'); this._dropdown.innerHTML = ''; this._open = false; this._cursor = -1; }
 };
 
-// -- AI Answer Engine -----------------------------------------------------------
+// -- model Answer Engine -----------------------------------------------------------
 
-var AI = {
+var Answer = {
   _gen: false, _rid: null, _cleanup: null,
 
   start: function(query, webResults) {
     if (!API) { $id('noModelNotice').classList.add('vis'); return; }
-    API.ai.isLoaded().then(function(loaded) {
+    API.model.isLoaded().then(function(loaded) {
       if (!loaded) { $id('noModelNotice').classList.add('vis'); return; }
-      var card = $id('aiCard'); card.style.display = 'block';
-      var body = $id('aiBody'); body.innerHTML = '';
-      $id('aiStopBtn').classList.add('vis');
+      var card = $id('modelCard'); card.style.display = 'block';
+      var body = $id('modelBody'); body.innerHTML = '';
+      $id('modelStopBtn').classList.add('vis');
 
-      API.ai.getActiveModelId().then(function(mid) {
-        $id('aiModelLabel').textContent = mid ? mid.split('/').pop().replace(/_/g, ' ') : 'Space Assistant';
+      API.model.getActiveModelId().then(function(mid) {
+        $id('activeModelLabel').textContent = mid ? mid.split('/').pop().replace(/_/g, ' ') : 'Space Assistant';
       }).catch(function() {});
 
-      AI._gen = true;
-      AI._rid = 'srch-' + Date.now();
+      Answer._gen = true;
+      Answer._rid = 'srch-' + Date.now();
 
       var ctx = webResults.map(function(r) {
         return '- ' + r.title + ': ' + (r.snippet ? r.snippet.slice(0, 150) : '') + ' [' + r.url + ']';
@@ -1407,40 +1407,40 @@ var AI = {
         ? 'User searched: "' + query + '"\n\nTop web results:\n' + ctx + '\n\nGive a helpful, accurate answer.'
         : 'User searched: "' + query + '"\n\nGive a helpful, accurate answer.';
 
-      var full = '', rid = AI._rid;
+      var full = '', rid = Answer._rid;
       var cursorEl = document.createElement('span'); cursorEl.className = 'cursor';
 
-      AI._cleanup = API.ai.onToken(function(data) {
+      Answer._cleanup = API.model.onToken(function(data) {
         if (data.requestId !== rid) return;
-        if (data.error) { body.innerHTML = '<span style="color:var(--text-2);font-style:italic;">(Model error: ' + esc(data.error) + ')</span>'; AI._finish(); return; }
+        if (data.error) { body.innerHTML = '<span style="color:var(--text-2);font-style:italic;">(Model error: ' + esc(data.error) + ')</span>'; Answer._finish(); return; }
         if (data.token) { full += data.token; body.textContent = full; body.appendChild(cursorEl); }
-        if (data.isFinal) { body.textContent = full; AI._finish(); }
+        if (data.isFinal) { body.textContent = full; Answer._finish(); }
       });
 
-      API.ai.chat(
+      API.model.chat(
         [{ role: 'system', content: sys }, { role: 'user', content: usr }],
         { max_tokens: 400, temperature: 0.35 },
         rid
-      ).catch(function() { AI._finish(); });
+      ).catch(function() { Answer._finish(); });
     }).catch(function() { $id('noModelNotice').classList.add('vis'); });
   },
 
   stop: function() {
-    if (!AI._gen) return;
-    if (API) try { API.ai.abort(); } catch(e) {}
-    AI._finish();
+    if (!Answer._gen) return;
+    if (API) try { API.model.abort(); } catch(e) {}
+    Answer._finish();
   },
 
   _finish: function() {
-    AI._gen = false;
-    $id('aiStopBtn').classList.remove('vis');
-    if (AI._cleanup) { try { AI._cleanup(); } catch(e) {} AI._cleanup = null; }
+    Answer._gen = false;
+    $id('modelStopBtn').classList.remove('vis');
+    if (Answer._cleanup) { try { Answer._cleanup(); } catch(e) {} Answer._cleanup = null; }
   },
 
   reset: function() {
-    AI.stop();
-    var card = $id('aiCard'); if (card) card.style.display = 'none';
-    var body = $id('aiBody'); if (body) body.innerHTML = '';
+    Answer.stop();
+    var card = $id('modelCard'); if (card) card.style.display = 'none';
+    var body = $id('modelBody'); if (body) body.innerHTML = '';
     $id('noModelNotice').classList.remove('vis');
   }
 };
@@ -1513,8 +1513,8 @@ var Search = {
     // History clear
     $id('historyClearBtn').addEventListener('click', function() { Hist.clear(); self._renderHistory(); });
 
-    // AI stop
-    $id('aiStopBtn').addEventListener('click', function() { AI.stop(); });
+    // model stop
+    $id('modelStopBtn').addEventListener('click', function() { Answer.stop(); });
 
     // No-model link
     var nml = $id('loadModelLink');
@@ -1616,7 +1616,7 @@ var Search = {
     $id('relatedWidget').style.display = 'none';
     $id('infoWidget').style.display = 'none';
     $id('paginationRow').style.display = 'none';
-    AI.reset();
+    Answer.reset();
     GoogleAI.hideTrigger();
 
     // -- Images -------------------------------------------------------------
@@ -1647,7 +1647,7 @@ var Search = {
       this._renderWeb(cached.results, query, page);
       this._renderRelated(query);
       if (cached.instant) this._renderInstant(cached.instant);
-      AI.start(query, cached.results.slice(0, 5));
+      Answer.start(query, cached.results.slice(0, 5));
       return;
     }
 
@@ -1684,7 +1684,7 @@ var Search = {
         self._renderWeb(merged, query, page);
         self._renderRelated(query);
         if (payload.instant) self._renderInstant(payload.instant);
-        AI.start(query, merged.slice(0, 5));
+        Answer.start(query, merged.slice(0, 5));
       }
     });
   },
@@ -1912,13 +1912,13 @@ var GoogleAI = {
     var closeBtn     = $id('gai-close-btn');
     var sendBtn      = $id('gai-send-btn');
     var input        = $id('gai-input');
-    var localAiBtn   = $id('gai-local-ai-btn');
+    var localModelBtn   = $id('gai-local-model-btn');
 
     if (!trigger || !panel) return;
 
     // "Use Local model" — explicit user action, never automatic
-    if (localAiBtn) {
-      localAiBtn.addEventListener('click', function() {
+    if (localModelBtn) {
+      localModelBtn.addEventListener('click', function() {
         self._runLocalAI(self._query);
       });
     }
@@ -2050,7 +2050,7 @@ var GoogleAI = {
 
     // -- Step 1: attempt full JS render for AI Overview ----------------------
     // udm=50 = Google AI Mode; requires JS execution AND a signed-in session.
-    var aiUrl = 'https://www.google.com/search?q=' + encodeURIComponent(query)
+    var modelUrl = 'https://www.google.com/search?q=' + encodeURIComponent(query)
       + '&hl=en&gl=us&num=100&udm=50';
 
     var hasFetchRendered = API && API.browser && typeof API.browser.fetchRendered === 'function';
@@ -2059,7 +2059,7 @@ var GoogleAI = {
     var step1Promise;
     if (hasFetchRendered) {
       if (subtitleEl) subtitleEl.textContent = 'Loading Space Assistant overview…';
-      step1Promise = withTimeout(API.browser.fetchRendered(aiUrl), 22000);
+      step1Promise = withTimeout(API.browser.fetchRendered(modelUrl), 22000);
     } else {
       // fetchRendered not available — jump straight to raw fetch
       step1Promise = Promise.resolve(null);
@@ -2077,7 +2077,7 @@ var GoogleAI = {
           self._setLoading(false);
           if (subtitleEl) subtitleEl.textContent = 'Space Assistant Overview';
           self._appendAssistant(result.text, result.sources, query);
-          self._hideLocalAiRow();
+          self._hideLocalModelRow();
           return;
         }
 
@@ -2105,7 +2105,7 @@ var GoogleAI = {
           'Space is showing a CAPTCHA. Open space://newtab in a new tab to solve it, then try again.',
           [], query
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
 
@@ -2120,7 +2120,7 @@ var GoogleAI = {
 
   // -- Fallback: raw fetchHtml against regular Space Search -------------------
   // Extracts featured snippets, knowledge panels and organic sources.
-  // Called when fetchRendered fails, returns a consent page, or yields no AI
+  // Called when fetchRendered fails, returns a consent page, or yields no model
   // overview content.
   //
   // If html is supplied (already fetched above) it is used directly.
@@ -2154,7 +2154,7 @@ var GoogleAI = {
           'Space did not return any content. Check your internet connection and try again.',
           [], query
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
 
@@ -2171,7 +2171,7 @@ var GoogleAI = {
               : 'Use Local model below for an offline answer.'),
           fallback.sources || [], query
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
 
@@ -2182,7 +2182,7 @@ var GoogleAI = {
           + 'Open space://newtab in a tab and accept cookies, then try again.',
           [], query
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
 
@@ -2192,7 +2192,7 @@ var GoogleAI = {
           'Space is showing a CAPTCHA. Open space://newtab in a new tab to solve it, then try again.',
           [], query
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
 
@@ -2202,7 +2202,7 @@ var GoogleAI = {
       if (result.text) {
         if (subtitleEl) subtitleEl.textContent = 'Space · Featured snippet';
         self._appendAssistant(result.text, result.sources, query);
-        self._hideLocalAiRow();
+        self._hideLocalModelRow();
         return;
       }
 
@@ -2220,7 +2220,7 @@ var GoogleAI = {
           [], query
         );
       }
-      self._showLocalAiRow();
+      self._showLocalModelRow();
 
     }).catch(function(err) {
       self._fetching = false;
@@ -2231,25 +2231,25 @@ var GoogleAI = {
         + 'Check your internet connection and try again.',
         [], query
       );
-      self._showLocalAiRow();
+      self._showLocalModelRow();
     });
   },
 
   // Show the "Use Local model instead" action row
-  _showLocalAiRow: function() {
-    var row = $id('gai-local-ai-row');
+  _showLocalModelRow: function() {
+    var row = $id('gai-local-model-row');
     if (row) row.style.display = 'flex';
   },
 
-  _hideLocalAiRow: function() {
-    var row = $id('gai-local-ai-row');
+  _hideLocalModelRow: function() {
+    var row = $id('gai-local-model-row');
     if (row) row.style.display = 'none';
   },
 
   // Trigger local model answer for the current query — called by the button
   _runLocalAI: function(query) {
     if (!API) { alert('spaceAPI not available.'); return; }
-    API.ai.isLoaded().then(function(loaded) {
+    API.model.isLoaded().then(function(loaded) {
       if (!loaded) {
         // Redirect user to settings to load a model
         var notice = $id('noModelNotice');
@@ -2258,11 +2258,11 @@ var GoogleAI = {
         GoogleAI._close_panel();
         return;
       }
-      // Close this panel and let the main AI card handle it
+      // Close this panel and let the main model card handle it
       GoogleAI._close_panel();
-      var aiCard = $id('aiCard');
-      if (aiCard) { aiCard.style.display = 'block'; }
-      // Kick off local AI with web results that are already in the page
+      var modelCard = $id('modelCard');
+      if (modelCard) { modelCard.style.display = 'block'; }
+      // Kick off local model with web results that are already in the page
       var resultCards = [];
       document.querySelectorAll('.r-card').forEach(function(card) {
         var a = card;
@@ -2276,7 +2276,7 @@ var GoogleAI = {
           });
         }
       });
-      AI.start(query, resultCards.slice(0, 5));
+      Answer.start(query, resultCards.slice(0, 5));
     }).catch(function() {
       GoogleAI._close_panel();
     });
@@ -2307,7 +2307,7 @@ var GoogleAI = {
     this._fetching = true;
     this._setLoading(true);
 
-    var aiUrl = 'https://www.google.com/search?q=' + encodeURIComponent(contextQuery)
+    var modelUrl = 'https://www.google.com/search?q=' + encodeURIComponent(contextQuery)
       + '&hl=en&gl=us&num=100&udm=50';
 
     var hasFetchRendered = API && API.browser && typeof API.browser.fetchRendered === 'function';
@@ -2315,7 +2315,7 @@ var GoogleAI = {
 
     var step1;
     if (hasFetchRendered) {
-      step1 = withTimeout(API.browser.fetchRendered(aiUrl), 22000);
+      step1 = withTimeout(API.browser.fetchRendered(modelUrl), 22000);
     } else {
       step1 = Promise.resolve(null);
     }
@@ -2334,7 +2334,7 @@ var GoogleAI = {
         if (result.text) {
           done();
           self._appendAssistant(result.text, result.sources, val);
-          self._hideLocalAiRow();
+          self._hideLocalModelRow();
           return;
         }
         // Rendered page but no assistant overview — try raw fallback with the same html
@@ -2376,7 +2376,7 @@ var GoogleAI = {
 
       if (!html || typeof html !== 'string' || html.length < 500) {
         self._appendAssistant('No results returned from Space. Check your connection and try again.', [], displayVal);
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
 
@@ -2386,7 +2386,7 @@ var GoogleAI = {
           'Space Assistant overviews require a signed-in Space account. Open space://newtab in a tab to sign in, then try again.',
           [], displayVal
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
       if (responseType === 'consent') {
@@ -2394,7 +2394,7 @@ var GoogleAI = {
           'Space is showing a cookie-consent prompt. Open space://newtab in a tab and accept cookies, then try again.',
           [], displayVal
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
       if (responseType === 'captcha') {
@@ -2402,31 +2402,31 @@ var GoogleAI = {
           'Space is showing a CAPTCHA. Open space://newtab in a tab to solve it, then try again.',
           [], displayVal
         );
-        self._showLocalAiRow();
+        self._showLocalModelRow();
         return;
       }
 
       var result = self._extractGoogleAI(html);
       if (result.text) {
         self._appendAssistant(result.text, result.sources, displayVal);
-        self._hideLocalAiRow();
+        self._hideLocalModelRow();
         return;
       }
 
       var fallback = self._buildFallbackFromSnippets(html, displayVal);
-      var noAiMsg = 'Space did not return an assistant overview for this question.';
+      var noModelMsg = 'Space did not return an assistant overview for this question.';
       if (fallback.sources && fallback.sources.length > 0) {
-        noAiMsg += ' Top results are shown below.';
+        noModelMsg += ' Top results are shown below.';
       }
-      self._appendAssistant(noAiMsg, fallback.sources || [], displayVal);
-      self._showLocalAiRow();
+      self._appendAssistant(noModelMsg, fallback.sources || [], displayVal);
+      self._showLocalModelRow();
 
     }).catch(function() {
       self._fetching = false;
       self._setLoading(false);
       if (sendBtn) sendBtn.disabled = false;
       self._appendAssistant('Failed to fetch results. Check your connection.', [], displayVal);
-      self._showLocalAiRow();
+      self._showLocalModelRow();
     });
   },
 
@@ -2582,7 +2582,7 @@ var GoogleAI = {
     if (snippets.length === 0) return { text: '', sources: [] };
 
     var combined = snippets.join('\n\n');
-    // Prepend a note so it's clear these are snippet extracts, not an AI summary
+    // Prepend a note so it's clear these are snippet extracts, not an model summary
     var intro = 'Here\'s what Space\'s top results say about "' + query + '":';
     return { text: intro + '\n\n' + combined, sources: sources };
   },
@@ -2618,7 +2618,7 @@ var GoogleAI = {
       row.className = 'gai-msg ' + msg.role;
 
       var avatar = document.createElement('div');
-      avatar.className = 'gai-avatar ' + (msg.role === 'assistant' ? 'space-ai' : 'user-av');
+      avatar.className = 'gai-avatar ' + (msg.role === 'assistant' ? 'space-model' : 'user-av');
       if (msg.role === 'assistant') {
         avatar.innerHTML = '<svg width="12" height="12" viewBox="0 0 18 18" fill="none"><path d="M9 1 L10.8 6.8 L17 9 L10.8 11.2 L9 17 L7.2 11.2 L1 9 L7.2 6.8 Z" fill="#fff"/></svg>';
       } else {
@@ -2702,7 +2702,7 @@ var GoogleAI = {
       this._query = query;
       this._thread = [];
       this._fetching = false;  // reset so the next open() can fetch fresh
-      this._hideLocalAiRow();
+      this._hideLocalModelRow();
       var subtitleEl = $id('gai-subtitle');
       if (subtitleEl) subtitleEl.textContent = 'Fetching from Space…';
       if (this._open) {

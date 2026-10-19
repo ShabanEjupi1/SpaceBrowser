@@ -22,73 +22,73 @@ export type TokenEventHandler = (data: {
 
 contextBridge.exposeInMainWorld('spaceAPI', {
 
-  // ── AI Engine ────────────────────────────
+  // ── model Engine ────────────────────────────
 
-  ai: {
+  model: {
     scanModels: () =>
-      ipcRenderer.invoke('ai:scan-models'),
+      ipcRenderer.invoke('model:scan-models'),
 
     listModels: () =>
-      ipcRenderer.invoke('ai:list-models'),
+      ipcRenderer.invoke('model:list-models'),
 
     addModel: (sourcePath: string, modelId?: string) =>
-      ipcRenderer.invoke('ai:add-model', sourcePath, modelId),
+      ipcRenderer.invoke('model:add-model', sourcePath, modelId),
 
     removeModel: (modelId: string) =>
-      ipcRenderer.invoke('ai:remove-model', modelId),
+      ipcRenderer.invoke('model:remove-model', modelId),
 
     loadModel: (modelId: string, params?: object) =>
-      ipcRenderer.invoke('ai:load-model', modelId, params),
+      ipcRenderer.invoke('model:load-model', modelId, params),
 
     unloadModel: () =>
-      ipcRenderer.invoke('ai:unload-model'),
+      ipcRenderer.invoke('model:unload-model'),
 
     isLoaded: () =>
-      ipcRenderer.invoke('ai:is-loaded'),
+      ipcRenderer.invoke('model:is-loaded'),
 
     getActiveModelId: () =>
-      ipcRenderer.invoke('ai:get-active-model-id'),
+      ipcRenderer.invoke('model:get-active-model-id'),
 
     getModelMetadata: () =>
-      ipcRenderer.invoke('ai:get-model-metadata'),
+      ipcRenderer.invoke('model:get-model-metadata'),
 
     countTokens: (text: string) =>
-      ipcRenderer.invoke('ai:count-tokens', text),
+      ipcRenderer.invoke('model:count-tokens', text),
 
     chat: (messages: object[], params: object, requestId: string) =>
-      ipcRenderer.invoke('ai:chat', messages, params, requestId),
+      ipcRenderer.invoke('model:chat', messages, params, requestId),
 
     generate: (prompt: string, params: object, requestId: string) =>
-      ipcRenderer.invoke('ai:generate', prompt, params, requestId),
+      ipcRenderer.invoke('model:generate', prompt, params, requestId),
 
     abort: () =>
-      ipcRenderer.invoke('ai:abort'),
+      ipcRenderer.invoke('model:abort'),
 
     getSettings: () =>
-      ipcRenderer.invoke('ai:get-settings'),
+      ipcRenderer.invoke('model:get-settings'),
 
     updateSettings: (patch: object) =>
-      ipcRenderer.invoke('ai:update-settings', patch),
+      ipcRenderer.invoke('model:update-settings', patch),
 
     // ── Ollama ──────────────────────────────────────────────────────────────
 
     /** Returns true if Ollama is installed on this machine */
     ollamaAvailable: () =>
-      ipcRenderer.invoke('ai:ollama-available'),
+      ipcRenderer.invoke('model:ollama-available'),
 
     /** Returns all Ollama models found in the local blob store */
     ollamaModels: () =>
-      ipcRenderer.invoke('ai:ollama-models'),
+      ipcRenderer.invoke('model:ollama-models'),
 
     /** Loads an Ollama model by its id (e.g. "ollama:llama3.2:3b") */
     loadOllamaModel: (ollamaId: string, params?: object) =>
-      ipcRenderer.invoke('ai:load-ollama-model', ollamaId, params),
+      ipcRenderer.invoke('model:load-ollama-model', ollamaId, params),
 
     /** Subscribe to token stream events */
     onToken: (handler: TokenEventHandler) => {
       const listener = (_event: Electron.IpcRendererEvent, data: any) => handler(data);
-      ipcRenderer.on('ai:token', listener);
-      return () => ipcRenderer.removeListener('ai:token', listener);
+      ipcRenderer.on('model:token', listener);
+      return () => ipcRenderer.removeListener('model:token', listener);
     },
   },
 
@@ -307,10 +307,10 @@ contextBridge.exposeInMainWorld('spaceAPI', {
   on: (channel: string, handler: (...args: any[]) => void) => {
     const allowed = [
       'open-preferences',
-      'ai:open-chat',
-      'ai:summarize-page',
-      'ai:ask-selection',
-      'ai:open-model-manager',
+      'model:open-chat',
+      'model:summarize-page',
+      'model:ask-selection',
+      'model:open-model-manager',
       'tabs:close-active',
       'tabs:reopen-closed',
       'open-file',

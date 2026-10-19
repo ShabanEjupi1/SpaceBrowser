@@ -492,7 +492,7 @@
 
     // ── Search ─────────────────────────────────────────────────────────────────
     // When Space Search (the default) is selected, route through our built-in
-    // AI search page (space://search?q=…). For other engines, navigate directly.
+    // model search page (space://search?q=…). For other engines, navigate directly.
     async function doSearch() {
       const val = document.getElementById('searchInput').value.trim();
       if (!val) return;

@@ -31,8 +31,8 @@
     }
     .badge.active { border-color:rgba(139,92,246,0.6); color:#c4b5fd; }
     .badge.win    { border-color:rgba(34,197,94,0.6);  color:#4ade80; }
-    .badge.ai-think { border-color:rgba(99,102,241,0.5); color:#a5b4fc; display:none; }
-    .badge.ai-think.vis { display:flex; }
+    .badge.computer-think { border-color:rgba(99,102,241,0.5); color:#a5b4fc; display:none; }
+    .badge.computer-think.vis { display:flex; }
     .game-area {
       flex:1; display:flex; align-items:center; justify-content:center;
       gap:28px; padding:18px; width:100%;
@@ -110,7 +110,7 @@
     <div class="badge" id="p1Badge">Red (You)</div>
     <div class="badge" id="p2Badge">Black (Computer)</div>
     <div class="badge" id="turnBadge">Red's turn</div>
-    <div class="badge ai-think" id="aiThink">Computer thinking</div>
+    <div class="badge computer-think" id="computerThink">Computer thinking</div>
   </div>
 </div>
 <div class="game-area">
@@ -670,7 +670,7 @@ class CheckersGame {
   constructor() {
     this._canvas    = document.getElementById('board');
     this._renderer  = new CheckersRenderer(this._canvas);
-    this._ai        = new MinimaxAI('normal');
+    this._computer        = new MinimaxAI('normal');
     this._undo      = new UndoStack();
     this._anim      = new AnimationSystem();
 
@@ -706,13 +706,13 @@ class CheckersGame {
   newGame() { this._newGame(); }
 
   setDifficulty(d) {
-    this._ai.setDifficulty(d);
+    this._computer.setDifficulty(d);
     document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('d' + d.charAt(0).toUpperCase() + d.slice(1)).classList.add('active');
     this._newGame();
   }
 
-  /** Undo the last human move (and the AI response if in PvE). */
+  /** Undo the last human move (and the computer response if in PvE). */
   undo() {
     if (!this._undo.canUndo || this._aiWorking) return;
     const snap = this._undo.pop();
@@ -768,7 +768,7 @@ class CheckersGame {
 
   _onClick(e) {
     if (this._gameOver || this._aiWorking || this._anim.isPlaying) return;
-    if (this._mode === 'pve' && this._turn === 'black') return; // AI's turn
+    if (this._mode === 'pve' && this._turn === 'black') return; // the computer's turn
 
     const rect = this._canvas.getBoundingClientRect();
     const sq   = this._renderer.sqSize;
@@ -796,7 +796,7 @@ class CheckersGame {
 
   /*  Private: Move Execution  */
 
-  /** Apply a move, update state, trigger animation, then hand off to AI if needed. */
+  /** Apply a move, update state, trigger animation, then hand off to computer if needed. */
   _executeMove(move) {
     this._undo.push(this._board, this._turn);
     const wasPiece  = this._board.get(move.fromR, move.fromC);
@@ -836,16 +836,16 @@ class CheckersGame {
     }
   }
 
-  /*  Private: AI  */
+  /*  Private: computer  */
 
   _scheduleAI() {
     if (this._gameOver || this._mode !== 'pve') return;
     this._aiWorking = true;
-    document.getElementById('aiThink').classList.add('vis');
+    document.getElementById('computerThink').classList.add('vis');
     // Use a small timeout so the board repaints before the blocking minimax runs
     setTimeout(() => {
-      const move = this._ai.bestMove(this._board, 'black');
-      document.getElementById('aiThink').classList.remove('vis');
+      const move = this._computer.bestMove(this._board, 'black');
+      document.getElementById('computerThink').classList.remove('vis');
       this._aiWorking = false;
       if (move) {
         this._executeMove(move);
@@ -892,7 +892,7 @@ class CheckersGame {
     try {
       const key = 'checkers_results';
       const results = JSON.parse(localStorage.getItem(key) || '[]');
-      results.unshift({ winner, mode: this._mode, difficulty: this._ai.difficulty, date: new Date().toISOString() });
+      results.unshift({ winner, mode: this._mode, difficulty: this._computer.difficulty, date: new Date().toISOString() });
       localStorage.setItem(key, JSON.stringify(results.slice(0, 30)));
     } catch (_) {}
   }

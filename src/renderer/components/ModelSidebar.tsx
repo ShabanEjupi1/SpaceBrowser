@@ -1,7 +1,7 @@
 /**
- * Space Browser – AI Sidebar Component (Spaceship Engine)
+ * Space Browser – model Sidebar Component (Spaceship Engine)
  * ─────────────────────────────────────────────────────────
- * Full-featured AI chat panel with:
+ * Full-featured model chat panel with:
  *  - Model selector / loader  ·  Multi-turn streaming chat
  *  - Page summarization  ·  Context-aware prompting
  *  - Engine status indicator  ·  Token counter
@@ -17,8 +17,8 @@ import React, {
 import { ModelSelector }  from './ModelSelector';
 import { ChatMessages }   from './ChatMessages';
 import { ChatInput }      from './ChatInput';
-import { AISettings }     from './AISettings';
-import styles             from '../styles/AISidebar.module.scss';
+import { ModelSettings }     from './ModelSettings';
+import styles             from '../styles/ModelSidebar.module.scss';
 
 export interface Message {
   id: string;
@@ -48,7 +48,7 @@ interface Props {
   onClose: () => void;
 }
 
-export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
+export const ModelSidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
   const [view, setView]                 = useState<SidebarView>('chat');
   const [models, setModels]             = useState<ModelInfo[]>([]);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
@@ -76,8 +76,8 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
     if (!api) return;
     loadModelsAndState();
 
-    // Subscribe to AI token stream
-    const cleanup = api.ai.onToken((data: any) => {
+    // Subscribe to model token stream
+    const cleanup = api.model.onToken((data: any) => {
       if (data.requestId !== requestIdRef.current) return;
 
       if (data.error) {
@@ -109,10 +109,10 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
   const loadModelsAndState = async () => {
     if (!api) return;
     const [modelList, loaded, activeId, ollamaAvailable] = await Promise.all([
-      api.ai.listModels(),
-      api.ai.isLoaded(),
-      api.ai.getActiveModelId(),
-      api.ai.ollamaAvailable?.() ?? Promise.resolve(false),
+      api.model.listModels(),
+      api.model.isLoaded(),
+      api.model.getActiveModelId(),
+      api.model.ollamaAvailable?.() ?? Promise.resolve(false),
     ]);
 
     let allModels = [...modelList];
@@ -120,7 +120,7 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
     // Merge in Ollama models so the quick-load list in the no-model prompt is complete
     if (ollamaAvailable) {
       try {
-        const ollamaList = await api.ai.ollamaModels();
+        const ollamaList = await api.model.ollamaModels();
         // Map OllamaModelInfo shape to the ModelInfo shape expected by NoModelPrompt
         const mapped = ollamaList.map((m: any) => ({
           id: m.id,
@@ -146,8 +146,8 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
     try {
       // Route to the correct IPC handler based on model ID prefix
       const ok = modelId.startsWith('ollama:')
-        ? await api.ai.loadOllamaModel(modelId)
-        : await api.ai.loadModel(modelId);
+        ? await api.model.loadOllamaModel(modelId)
+        : await api.model.loadModel(modelId);
       if (ok) {
         setActiveModelId(modelId);
         setIsModelLoaded(true);
@@ -161,9 +161,9 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
   const handleImportModel = useCallback(async () => {
     const filePath = await api.dialog.openGGUF();
     if (!filePath) return;
-    const info = await api.ai.addModel(filePath);
+    const info = await api.model.addModel(filePath);
     if (info) {
-      const refreshed = await api.ai.listModels();
+      const refreshed = await api.model.listModels();
       setModels(refreshed);
     }
   }, []);
@@ -205,11 +205,11 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
       { role: 'user', content: userText.trim() },
     ];
 
-    await api.ai.chat(apiMessages, { nPredict: 1024, stream: true }, requestId);
+    await api.model.chat(apiMessages, { nPredict: 1024, stream: true }, requestId);
   }, [isGenerating, isModelLoaded, messages, systemPrompt, pageUrl, pageTitle]);
 
   const handleAbort = useCallback(async () => {
-    await api.ai.abort();
+    await api.model.abort();
     setMessages(prev => prev.map(m =>
       m.isStreaming ? { ...m, isStreaming: false, content: m.content + ' [stopped]' } : m
     ));
@@ -249,7 +249,7 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `space-ai-chat-${Date.now()}.md`;
+    a.download = `space-model-chat-${Date.now()}.md`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -397,7 +397,7 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
         )}
 
         {view === 'settings' && (
-          <AISettings
+          <ModelSettings
             systemPrompt={systemPrompt}
             onSystemPromptChange={setSystemPrompt}
           />

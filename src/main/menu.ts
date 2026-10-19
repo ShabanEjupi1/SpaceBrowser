@@ -46,11 +46,11 @@ export function createApplicationMenu(win: BrowserWindow, tabManager: TabManager
     {
       label: 'Assistant',
       submenu: [
-        { label: 'Open Assistant Chat', accelerator: 'CmdOrCtrl+Shift+A', click: () => win.webContents.send('ai:open-chat') },
-        { label: 'Summarize Page', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.webContents.send('ai:summarize-page') },
-        { label: 'Ask About Selection', accelerator: 'CmdOrCtrl+Shift+Q', click: () => win.webContents.send('ai:ask-selection') },
+        { label: 'Open Assistant Chat', accelerator: 'CmdOrCtrl+Shift+A', click: () => win.webContents.send('model:open-chat') },
+        { label: 'Summarize Page', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.webContents.send('model:summarize-page') },
+        { label: 'Ask About Selection', accelerator: 'CmdOrCtrl+Shift+Q', click: () => win.webContents.send('model:ask-selection') },
         { type: 'separator' },
-        { label: 'Manage Models…', click: () => win.webContents.send('ai:open-model-manager') },
+        { label: 'Manage Models…', click: () => win.webContents.send('model:open-model-manager') },
       ],
     },
     {
