@@ -17,7 +17,7 @@
     "paths": {
       "@main/*": ["src/main/*"],
       "@renderer/*": ["src/renderer/*"],
-      "@engine/*": ["src/ai-engine/*"],
+      "@engine/*": ["src/model-engine/*"],
       "@preload/*": ["src/preload/*"]
     }
   },

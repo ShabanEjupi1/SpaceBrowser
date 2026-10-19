@@ -715,12 +715,12 @@ class SpaceGameLauncher {
 
   // â”€â”€ Network: JS-rendered page fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Opens a hidden BrowserWindow that fully executes JavaScript (needed for
-  // Google AI overviews which are injected by JS after page load), waits for
+  // Google answer summaries which are injected by JS after page load), waits for
   // the page to settle, then returns the fully-rendered outerHTML.
   //
   // Key design decisions:
   //   â€¢ Copies ALL google.com + google.co.* cookies from 'persist:tabs' so any
-  //     existing sign-in session is forwarded â€” Google AI Mode (udm=50) only
+  //     existing sign-in session is forwarded â€” Google's answer mode (udm=50) only
   //     returns model overviews to signed-in users.
   //   â€¢ Uses a dedicated ephemeral session per call so webRequest filters never
   //     collide with the main tab session.
@@ -790,7 +790,7 @@ class SpaceGameLauncher {
 
       // Block heavyweight resources â€” Google's SGE content does not depend on
       // images, media or fonts, so blocking them speeds up extraction.
-      // Do NOT block stylesheets or XHR/fetch â€” Google lazy-loads AI content
+      // Do NOT block stylesheets or XHR/fetch â€” Google lazy-loads the answer summary
       // via internal API calls after first paint.
       renderSession.webRequest.onBeforeRequest(
         { urls: ['*://*/*'] },
@@ -827,7 +827,7 @@ class SpaceGameLauncher {
       };
 
       // Extract rendered HTML once the page has loaded and JS has had time to run.
-      // We wait 5 s after did-finish-load â€” empirically, Google's AI overview JS
+      // We wait 5 s after did-finish-load â€” empirically, Google's answer summary JS
       // needs 3â€“5 s after initial load to inject its content into the DOM.
       hidden.webContents.once('did-finish-load', () => {
         setTimeout(tryExtract, 5000);

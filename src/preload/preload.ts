@@ -242,7 +242,7 @@ contextBridge.exposeInMainWorld('spaceAPI', {
       ipcRenderer.invoke('browser:fetch-html', url),
     /**
      * Fetch a fully JS-rendered page via a hidden BrowserWindow.
-     * Use this for pages (like Google AI overviews) where the content
+     * Use this for pages (like Google answer summaries) where the content
      * is injected by JavaScript and is not present in the raw HTML.
      * Slower than fetchHtml (~4–8 s) but returns the live DOM.
      */

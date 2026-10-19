@@ -1743,7 +1743,7 @@ var Search = {
 
     if (count >= 8) this._renderPagination(page, query);
 
-    // Show the Google AI trigger button now that results are rendered
+    // Show the Google answer trigger button now that results are rendered
     GoogleAI.showTrigger(query);
     GoogleAI.onQueryChange(query);
   },
@@ -1884,7 +1884,7 @@ var Search = {
   }
 };
 
-// -- Google AI Overview Panel -------------------------------------------------
+// -- Google answer summary Panel -------------------------------------------------
 //
 //  Opens Google Search in AI Mode (udm=50) inside a hidden BrowserWindow
 //  (browser:fetch-rendered IPC) so JavaScript executes and the assistant overview
@@ -2048,8 +2048,8 @@ var GoogleAI = {
     var subtitleEl = $id('gai-subtitle');
     if (subtitleEl) subtitleEl.textContent = 'Searching Space…';
 
-    // -- Step 1: attempt full JS render for AI Overview ----------------------
-    // udm=50 = Google AI Mode; requires JS execution AND a signed-in session.
+    // -- Step 1: attempt full JS render for answer summary ----------------------
+    // udm=50 = Google's answer mode; requires JS execution AND a signed-in session.
     var modelUrl = 'https://www.google.com/search?q=' + encodeURIComponent(query)
       + '&hl=en&gl=us&num=100&udm=50';
 
@@ -2431,14 +2431,14 @@ var GoogleAI = {
   },
 
   // -- Space HTML extraction ---------------------------------------------------
-  // Extracts AI Overview (SGE), featured snippets, knowledge panels in order.
+  // Extracts answer summary (SGE), featured snippets, knowledge panels in order.
   _extractGoogleAI: function(html) {
     var cleanText = this._cleanText.bind(this);
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var sources = [];
     var text = '';
 
-    // -- Strategy 1: AI Overview / SGE container ------------------------------
+    // -- Strategy 1: answer summary / SGE container ------------------------------
     // Space wraps the assistant overview in data-attrid="SGEResultCard" or a div with
     // class containing "ai-overview", "AIOverview", or role="complementary" with
     // specific nested structure. Selectors evolve frequently — we try several.
@@ -2561,7 +2561,7 @@ var GoogleAI = {
     return { text: text.trim(), sources: sources };
   },
 
-  // Build a fallback answer from top organic snippets when no AI Overview is found
+  // Build a fallback answer from top organic snippets when no answer summary is found
   _buildFallbackFromSnippets: function(html, query) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var snippets = [];

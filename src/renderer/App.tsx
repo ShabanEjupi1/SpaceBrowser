@@ -148,7 +148,7 @@ const AppInner: React.FC = () => {
 
     // App-level events (IPC → renderer, allowed channels in preload)
     const cleanupSidebarToggle = api.on('sidebar:toggle',   () => setSidebarOpen(prev => !prev));
-    const cleanupOpenAI      = api.on('model:open-chat',      () => setSidebarOpen(true));
+    const cleanupOpenChat      = api.on('model:open-chat',      () => setSidebarOpen(true));
     const cleanupCloseActive = api.on('tabs:close-active', () => {
       const active = tabsRef.current.find(t => t.isActive);
       if (active) api.tabs.close(active.id);
@@ -234,7 +234,7 @@ const AppInner: React.FC = () => {
       cleanupActivated();
       cleanupWinState();
       cleanupSidebarToggle?.();
-      cleanupOpenAI?.();
+      cleanupOpenChat?.();
       cleanupCloseActive?.();
       cleanupReopenClosed?.();
       window.removeEventListener('keydown', handleKeyDown, true);
