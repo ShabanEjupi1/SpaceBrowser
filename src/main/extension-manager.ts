@@ -412,7 +412,7 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
 
     if (useAI) {
       if(!api||!api.ai||!api.ai.chat){
-        output.innerHTML='<span style="color:#f87171;">⚠ Space AI engine not available. Load a model in the AI sidebar first.</span>';
+        output.innerHTML='<span style="color:#f87171;">⚠ Space model engine not available. Load a model in the assistant sidebar first.</span>';
         goBtn.disabled=false;goBtn.textContent='Translate This Page';
         return;
       }
@@ -473,7 +473,7 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
   },
   {
     id: 'space-summariser',
-    name: 'AI Page Summariser',
+    name: 'Page Summariser',
     version: '1.1.0',
     description: 'Summarise any web page in one click.',
     author: 'Space Team',
@@ -521,7 +521,7 @@ export const BUILT_IN_EXTENSIONS: ExtensionManifest[] = [
     if(!text||text.length<100){output.innerHTML='<span style="color:#f87171;">Not enough readable content on this page to summarise.</span>';return;}
     var api=window.spaceAPI;
     if(!api||!api.ai||!api.ai.chat){
-      output.innerHTML='<span style="color:#f87171;">⚠ Load an AI model in the Space sidebar first.</span>';
+      output.innerHTML='<span style="color:#f87171;">⚠ Load a language model in the Space sidebar first.</span>';
       return;
     }
     var prompts={

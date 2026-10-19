@@ -109,7 +109,7 @@
   </button>
   <button class="header-btn" id="aiToggleBtn" onclick="toggleAI()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M4.5 4.5h4M4.5 6.5h4M4.5 8.5h2"/></svg>
-    vs AI: Off
+    vs Computer: Off
   </button>
   <div class="info-row">
     <div class="badge" id="turnBadge">⬜ White to move</div>
@@ -300,7 +300,7 @@ function toggleAI() {
   const btn = document.getElementById('aiToggleBtn');
   btn.textContent = '';
   const svg = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M4.5 4.5h4M4.5 6.5h4M4.5 8.5h2"/></svg>`;
-  btn.innerHTML = svg + ` vs AI: ${aiEnabled ? '<span style="color:#34d399">On</span>' : 'Off'}`;
+  btn.innerHTML = svg + ` vs Computer: ${aiEnabled ? '<span style="color:#34d399">On</span>' : 'Off'}`;
   if (aiEnabled && sideToMove === B && !gameOver) scheduleAI();
 }
 
@@ -899,7 +899,7 @@ function minimax(bs, castl, ep, depth, alpha, beta, maximizing) {
 function scheduleAI() {
   if (!aiEnabled || sideToMove !== B || gameOver || aiThinking) return;
   aiThinking = true;
-  updateStatus('⚙️ AI is thinking…');
+  updateStatus('⚙️ Computer is thinking…');
 
   // Use setTimeout to yield to the UI before running the search
   setTimeout(() => {
@@ -926,7 +926,7 @@ function scheduleAI() {
     } finally {
       aiThinking = false;
     }
-  }, 60); // short delay so UI can repaint "AI thinking…"
+  }, 60); // short delay so UI can repaint "Computer thinking…"
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────

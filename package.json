@@ -1,7 +1,7 @@
 {
   "name": "space-browser",
   "version": "2.0.0",
-  "description": "Space \u2013 A next-generation browser with built-in local AI inference. No cloud. No Ollama. Pure GGUF.",
+  "description": "Space \u2013 A next-generation browser with built-in local language-model inference. No cloud. No Ollama. Pure GGUF.",
   "productName": "Space",
   "main": "dist/main/main.js",
   "scripts": {
@@ -27,7 +27,7 @@
   },
   "keywords": [
     "browser",
-    "AI",
+    "language-model",
     "GGUF",
     "llama",
     "electron",

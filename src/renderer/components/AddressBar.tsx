@@ -127,7 +127,7 @@ const EXT_ACTION_LABELS: Record<string, string> = {
   'space-screenshot':     'Capture a full-page screenshot (Alt+Shift+P)',
   'space-json-formatter': 'Format raw JSON on the current page',
   'space-translator':     'Open page translator panel (Alt+Shift+T)',
-  'space-summariser':     'Summarise this page with AI (Alt+Shift+S)',
+  'space-summariser':     'Summarise this page with the local model (Alt+Shift+S)',
   'space-color-picker':   'Pick colours from any element (Alt+Shift+C)',
 };
 
@@ -521,12 +521,12 @@ export const AddressBar: React.FC<Props> = ({
         <button
           className={`${styles.aiToggleBtn} ${sidebarOpen ? styles.active : ''}`}
           onClick={onToggleSidebar}
-          title="Toggle AI Sidebar (Ctrl+Shift+A)"
-          aria-label={sidebarOpen ? 'Close AI sidebar' : 'Open AI sidebar'}
+          title="Toggle Assistant Sidebar (Ctrl+Shift+A)"
+          aria-label={sidebarOpen ? 'Close assistant sidebar' : 'Open assistant sidebar'}
           aria-pressed={sidebarOpen}
         >
           <AISparkIcon />
-          <span className={styles.aiLabel}>AI</span>
+          <span className={styles.aiLabel}>Model</span>
         </button>
       </div>
     </div>

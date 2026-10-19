@@ -113,7 +113,7 @@
   <div class="btn-row">
     <button class="ov-btn" onclick="startGame(1)">⛏️ 1 Player</button>
     <button class="ov-btn secondary" onclick="startGame(2)">🔁 2 Players</button>
-    <button class="ov-btn green" onclick="startGame('ai')">⚙️ vs AI</button>
+    <button class="ov-btn green" onclick="startGame('ai')">⚙️ vs Computer</button>
   </div>
 </div>
 
@@ -345,7 +345,7 @@ function gameOver(won) {
   const stars=won?'🏆':(level>=15?'🥈':level>=10?'🥉':'💸');
   let winnerText='';
   if(numPlayers===2||aiActive) {
-    const w=scores[1]>=scores[2]?'Player 1':(aiActive?'AI':'Player 2');
+    const w=scores[1]>=scores[2]?'Player 1':(aiActive?'Computer':'Player 2');
     winnerText='<br>Winner: <strong style="color:#fbbf24;">'+w+'</strong>';
   }
   document.getElementById('ovTitle').textContent=won?'🏆 You Win!':stars+' Time\'s Up!';
@@ -359,12 +359,12 @@ function gameOver(won) {
 function updateHUD() {
   const totalGoal=Object.values(scores).reduce((a,b)=>a+b,0);
   document.getElementById('p1ScoreBadge').textContent='P1 💰$'+(scores[1]||0);
-  document.getElementById('p2ScoreBadge').textContent=(aiActive?'⚙️ AI':'P2')+' 💰$'+(scores[2]||0);
+  document.getElementById('p2ScoreBadge').textContent=(aiActive?'⚙️ CPU':'P2')+' 💰$'+(scores[2]||0);
   document.getElementById('goalBadge').textContent='Goal: $'+GOALS[level];
   document.getElementById('levelBadge').textContent='Lv '+level+'/'+MAX_LEVEL;
   document.getElementById('dynBadge').textContent='💣 ×'+(dynamites[currentPlayer]||0);
   if(numPlayers===2||aiActive)
-    document.getElementById('turnBadge').textContent=(currentPlayer===1?'P1':(aiActive?'AI':'P2'))+"'s Turn";
+    document.getElementById('turnBadge').textContent=(currentPlayer===1?'P1':(aiActive?'CPU':'P2'))+"'s Turn";
 }
 
 // ── Input ──────────────────────────────────────────────────────────────────────
@@ -658,7 +658,7 @@ function drawMinerPlatform(px,py,p){
   ctx.strokeStyle=p===2?'rgba(147,197,253,0.5)':'rgba(254,243,199,0.4)';ctx.lineWidth=1;ctx.stroke();
   // Player label
   ctx.fillStyle=p===2?'#93c5fd':'#fbbf24'; ctx.font='bold 8px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(p===2&&aiActive?'AI':'P'+p,0,-16);
+  ctx.fillText(p===2&&aiActive?'CPU':'P'+p,0,-16);
   // Rope attachment
   ctx.fillStyle='#78350f'; ctx.beginPath(); ctx.arc(0,4,5,0,Math.PI*2); ctx.fill();
   ctx.restore();

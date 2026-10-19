@@ -59,7 +59,7 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
   const [tokenCount, setTokenCount]     = useState(0);
   const [exportFlash, setExportFlash]   = useState(false);
   const [systemPrompt, setSystemPrompt] = useState(
-    'You are a helpful AI assistant embedded in the Space browser. ' +
+    'You are a helpful assistant program embedded in the Space browser. ' +
     'Be concise, accurate, and helpful. When the user shares a URL or page title, ' +
     'you can reference it in your response. ' +
     'Respond directly to the user — do not narrate your reasoning process, ' +
@@ -241,11 +241,11 @@ export const AISidebar: React.FC<Props> = ({ pageUrl, pageTitle, onClose }) => {
     const visible = messages.filter(m => m.role !== 'system' && !m.isStreaming && !m.error);
     if (visible.length === 0) return;
     const md = visible.map(m => {
-      const who = m.role === 'user' ? '**You**' : '**Spaceship AI**';
+      const who = m.role === 'user' ? '**You**' : '**Space Assistant**';
       return `${who}\n\n${m.content}`;
     }).join('\n\n---\n\n');
 
-    const blob = new Blob([`# Space AI Conversation\n\n_Exported from Space Browser_\n\n---\n\n${md}`], { type: 'text/markdown' });
+    const blob = new Blob([`# Space Assistant Conversation\n\n_Exported from Space Browser_\n\n---\n\n${md}`], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -591,7 +591,7 @@
       <button class="cat-pill" data-cat="productivity" onclick="setCategory('productivity')">Productivity</button>
       <button class="cat-pill" data-cat="privacy" onclick="setCategory('privacy')">Privacy</button>
       <button class="cat-pill" data-cat="appearance" onclick="setCategory('appearance')">Appearance</button>
-      <button class="cat-pill" data-cat="ai" onclick="setCategory('ai')">AI Tools</button>
+      <button class="cat-pill" data-cat="ai" onclick="setCategory('ai')">Model Tools</button>
       <button class="cat-pill" data-cat="developer" onclick="setCategory('developer')">Developer</button>
     </div>
 
@@ -663,7 +663,7 @@ function setCategory(cat) {
   document.querySelectorAll('.cat-pill').forEach(b =>
     b.classList.toggle('active', b.dataset.cat === cat));
   const labels = { all:'All Extensions', productivity:'Productivity', privacy:'Privacy & Security',
-                   appearance:'Appearance', ai:'AI Tools', developer:'Developer Tools' };
+                   appearance:'Appearance', ai:'Model Tools', developer:'Developer Tools' };
   document.getElementById('mktSectionLabel').textContent = labels[cat] || cat;
   renderMarketplace();
 }
@@ -891,7 +891,7 @@ const PLACEHOLDER_CATALOGUE = [
   { id:'space-dark-reader',  name:'Dark Reader',          version:'1.2.0', description:'Enables dark mode on every website automatically.', author:'Space Team', category:'appearance', icon:'🌑', permissions:['tabs','storage'], rating:4.9, installs:124500, tags:['dark','eye'], _installed:false, _enabled:false },
   { id:'space-ad-blocker',   name:'Space Shield',         version:'2.1.0', description:'Blocks ads, trackers, and pop-ups site-wide.',       author:'Space Team', category:'privacy',    icon:'🛡️', permissions:['webRequest','tabs'], rating:4.8, installs:98200,  tags:['ads','privacy'], _installed:false, _enabled:false },
   { id:'space-json-formatter', name:'JSON Formatter',     version:'2.0.0', description:'Formats raw JSON with syntax highlighting.',          author:'Space Team', category:'developer',  icon:'{ }', permissions:['tabs'], rating:4.9, installs:67300,  tags:['json','api'], _installed:false, _enabled:false },
-  { id:'space-summariser',   name:'AI Page Summariser',   version:'1.1.0', description:'Summarise any page with your local AI model.',        author:'Space Team', category:'ai',         icon:'✨',  permissions:['tabs','ai'], rating:4.7, installs:53400, tags:['summary','ai'], _installed:false, _enabled:false },
+  { id:'space-summariser',   name:'Page Summariser',   version:'1.1.0', description:'Summarise any page with your local language model.',        author:'Space Team', category:'ai',         icon:'✨',  permissions:['tabs','ai'], rating:4.7, installs:53400, tags:['summary','ai'], _installed:false, _enabled:false },
   { id:'space-tab-suspender',name:'Tab Suspender',        version:'1.1.0', description:'Auto-suspends inactive tabs to save memory.',         author:'Space Team', category:'productivity',icon:'💤', permissions:['tabs'], rating:4.6, installs:32100, tags:['memory','performance'], _installed:false, _enabled:false },
 ];
 

@@ -108,9 +108,9 @@
   <span class="title">Checkers</span>
   <div class="info-row">
     <div class="badge" id="p1Badge">Red (You)</div>
-    <div class="badge" id="p2Badge">Black (AI)</div>
+    <div class="badge" id="p2Badge">Black (Computer)</div>
     <div class="badge" id="turnBadge">Red's turn</div>
-    <div class="badge ai-think" id="aiThink">AI thinking</div>
+    <div class="badge ai-think" id="aiThink">Computer thinking</div>
   </div>
 </div>
 <div class="game-area">
@@ -143,8 +143,8 @@
 
 <div id="menuOverlay">
   <h2>Checkers</h2>
-  <p class="menu-sub" id="menuSub">Classic 8x8 draughts with forced captures, king promotion and a minimax AI opponent.</p>
-  <button class="menu-btn" onclick="checkersGame.startPvE()">vs AI (You are Red)</button>
+  <p class="menu-sub" id="menuSub">Classic 8x8 draughts with forced captures, king promotion and a minimax computer opponent.</p>
+  <button class="menu-btn" onclick="checkersGame.startPvE()">vs Computer (You are Red)</button>
   <div class="sep"></div>
   <button class="menu-btn red-btn" onclick="checkersGame.startPvP()">2 Players (local)</button>
 </div>
@@ -861,7 +861,7 @@ class CheckersGame {
     this._gameOver = true;
     const name = winner === 'red'
       ? (this._mode === 'pve' ? 'You win!' : 'Red wins!')
-      : (this._mode === 'pve' ? 'AI wins!' : 'Black wins!');
+      : (this._mode === 'pve' ? 'Computer wins!' : 'Black wins!');
     document.getElementById('turnBadge').textContent = name;
     document.getElementById(winner === 'red' ? 'p1Badge' : 'p2Badge').className = 'badge win';
     this._saveResult(winner);
@@ -878,7 +878,7 @@ class CheckersGame {
     document.getElementById('turnBadge').textContent =
       this._turn === 'red'
         ? (this._mode === 'pve' ? "Your turn" : "Red's turn")
-        : (this._mode === 'pve' ? "AI's turn" : "Black's turn");
+        : (this._mode === 'pve' ? "Computer's turn" : "Black's turn");
     document.getElementById('undoBtn').disabled = !this._undo.canUndo || this._aiWorking;
   }
 

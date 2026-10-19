@@ -39,14 +39,14 @@ export function createApplicationMenu(win: BrowserWindow, tabManager: TabManager
         { type: 'separator' },
         { role: 'togglefullscreen' },
         { type: 'separator' },
-        { label: 'Toggle AI Sidebar', accelerator: 'CmdOrCtrl+Shift+A', click: () => win.webContents.send('sidebar:toggle') },
+        { label: 'Toggle Assistant Sidebar', accelerator: 'CmdOrCtrl+Shift+A', click: () => win.webContents.send('sidebar:toggle') },
         { label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', role: 'toggleDevTools' },
       ],
     },
     {
-      label: 'AI',
+      label: 'Assistant',
       submenu: [
-        { label: 'Open AI Chat', accelerator: 'CmdOrCtrl+Shift+A', click: () => win.webContents.send('ai:open-chat') },
+        { label: 'Open Assistant Chat', accelerator: 'CmdOrCtrl+Shift+A', click: () => win.webContents.send('ai:open-chat') },
         { label: 'Summarize Page', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.webContents.send('ai:summarize-page') },
         { label: 'Ask About Selection', accelerator: 'CmdOrCtrl+Shift+Q', click: () => win.webContents.send('ai:ask-selection') },
         { type: 'separator' },

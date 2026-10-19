@@ -89,7 +89,7 @@
     <div class="badge" id="p2Badge">P2 --</div>
     <div class="badge" id="turnBadge">-</div>
     <div class="badge tourn" id="tournBadge" style="display:none;">Tournament</div>
-    <div class="badge ai-think" id="aiThink">AI thinking</div>
+    <div class="badge ai-think" id="aiThink">Computer thinking</div>
   </div>
 </div>
 <div class="canvas-area">
@@ -104,7 +104,7 @@
   <h2>8 Ball Pool</h2>
   <p class="menu-sub" id="menuSub">Classic pool rules. Sink your group (solids or stripes) then pot the 8-ball to win!</p>
   <button class="menu-btn" onclick="game.startMode('pvp')">2 Player (Local)</button>
-  <button class="menu-btn blue" onclick="game.startMode('pve')">vs AI</button>
+  <button class="menu-btn blue" onclick="game.startMode('pve')">vs Computer</button>
   <div class="sep"></div>
   <button class="menu-btn gold" onclick="game.startMode('tournament')">Tournament (4 players)</button>
   <div id="bracketWrap" style="display:none;">
@@ -1271,7 +1271,7 @@ class BilliardsGame {
 
   _nameOf(t) {
     if (this._mode === 'pvp') return 'Player ' + t;
-    if (this._mode === 'pve') return t === 1 ? 'You' : 'AI';
+    if (this._mode === 'pve') return t === 1 ? 'You' : 'Computer';
     if (this._mode === 'tournament' && this._tourney) {
       const m = this._tourney.currentMatch;
       return m ? (t === 1 ? m.p1 : m.p2) : 'P' + t;

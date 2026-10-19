@@ -1316,7 +1316,7 @@ function scheduleAI() {
   if (aiThinking) return; // already computing, don't double-schedule
   aiThinking = true;
   updateStatus();
-  renderBoard(); // force-paint "AI thinking..." before blocking computation
+  renderBoard(); // force-paint "Computer thinking..." before blocking computation
 
   // Safety watchdog: if AI takes > 15 s, reset so the game doesn't freeze permanently
   const watchdog = setTimeout(() => {
